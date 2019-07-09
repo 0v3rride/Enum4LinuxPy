@@ -231,6 +231,8 @@ def get_ldapinfo(args):
 
         if output.find("ldap_sasl_bind") > -1:
             print("[E] Connection error\n");
+        else:
+            print(output);
 
         #PARSE LDAP STRING
 
