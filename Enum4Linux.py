@@ -5,28 +5,12 @@ import subprocess;
 import datetime;
 import terminaltables;
 import re;
+import sys;
 
 #Global Vars
 version = "1.0.0";
-# target = None;
-# fail_limit = 1000;
-# search_until_fail = False;
-# highest_rid = 999999;
-# workgroup = None;
-# username = "";
-# password = "";
-# filename = None;
-# share_file = None;
-# detailed = False;
-# passpol = False;
-# verbose = False;
-# rid_range = ["500-550", "1000-1050"];
-# known_usernames = ["administrator", "guest", "krbtgt", "domain admins", "root", "bin", "none"];
 dependent_programs = ["nmblookup", "net", "rpcclient", "smbclient"];
 optional_dependent_programs = ["polenum", "ldapsearch"];
-# debug = False;
-# filename = None;
-
 
 
 ###############################################################################
@@ -104,34 +88,6 @@ def setArgs(uargs):
         uargs.n = True;
         uargs.i = True;
 
-    # global username
-    # global password
-    # global detailed
-    # global passpol
-    # global fail_limit
-    # global rid_range
-    # global share_file
-    # global known_usernames
-    # global workgroup
-    # global verbose
-    # global target
-
-    # username = uargs.u;
-    # password = uargs.p;
-    # detailed = uargs.d;
-    # passpol = uargs.P;
-    # fail_limit = uargs.K;
-    # rid_range = uargs.R;
-    # share_file = uargs.s;
-    # known_usernames = uargs.k;
-    # workgroup = uargs.w;
-    # verbose = uargs.v;
-    # target = uargs.t;
-
-
-    #target
-    #uargs.t = r"\\{}".format(uargs.t);
-
     #check all argument
     if not uargs.U and not uargs.S and not uargs.G and not uargs.r and not uargs.p and not uargs.P and not uargs.o and not uargs.n and not uargs.i:
         uargs.a = True;
@@ -142,6 +98,10 @@ def setArgs(uargs):
 
 
 def checkDependentProgs(proglist, verbose):
+    if sys.platform.lower() is "windows":
+        print("[E] Enum4LinuxPy is meant to be ran in an *unix type of environment. The reason for this is due to the fact that Enum4LinuxPy utilizes tools like smbclient and rpcclient, which are usually only found in *unix type environments.");
+        exit(1);
+
     for prog in proglist:
         response = subprocess.run(["which", "{}".format(prog)], stdout=subprocess.PIPE);
 
@@ -167,7 +127,19 @@ def getArgs():
     Simple wrapper around the tools in the samba package to provide similar 
     functionality to enum.exe (formerly from www.bindview.com).  Some additional 
     features such as RID cycling have also been added for convenience.
-    """, prog="Enum4LinuxPy v{} https://github.com/0v3rride Copyright (C) Ryan Gore".format(version));
+    """, usage="python Enum4LinuxPy.py -t <target> <options>", prog="Enum4LinuxPy v{} https://github.com/0v3rride Copyright (C) Ryan Gore (0v3rride)".format(version),
+    epilog="""
+    RID cycling should extract a list of users from Windows (or Samba) hosts       
+    which have RestrictAnonymous set to 1 (Windows NT and 2000), or "Network    
+    access: Allow anonymous SID/Name translation" enabled (XP, 2003).         
+                                                                              
+    NB: Samba servers often seem to have RIDs in the range 3000-3050.         
+                                                                                        
+    Dependancy info: You will need to have the samba package installed as this  
+    script is basically just a wrapper around rpcclient, net, nmblookup and     
+    smbclient.  Polenum from http://labs.portcullis.co.uk/application/polenum/
+    is required to get Password Policy info.                                  
+    """);
 
     std = parser.add_argument_group("Options similar to Enum4Linux.pl");
 
@@ -329,38 +301,37 @@ def enum_groups(args):
             output = subprocess.check_output(["rpcclient", "-W", args.w, "-U", r"{}%{}".format(args.u, args.p), args.t, "-c", "enumalsgroups {}".format(group)]).decode("UTF-8");
 
             if(group is "domain"):
-                print("[+] Getting local groups:\n");
+                print("[+] Getting Active Directory groups:\n");
             else:
                 print("[+] Getting {} groups\n".format(group));
 
             if (output.find("error: NT_STATUS_ACCESS_DENIED") > -1):
                 if(group is "domain"):
-                    print("[E] Can't get local groups: NT_STATUS_ACCESS_DENIED\n");
+                    print("[E] Can't get Active Directory groups: NT_STATUS_ACCESS_DENIED\n");
                 else:
                     print("[E] Can't get {} groups: NT_STATUS_ACCESS_DENIED\n".format(group));
             else:
-                if(re.search("group:.\s", output, re.I), output, re.I):
+                if(re.search("group:", output, re.I)):
                     print(output);
 
-                #GET GROUP NAME, MEMBERS & RID
+            #GET GROUP NAME, MEMBERS & RID
 
-                groupdata = re.findall(r"(\[[\w\s-]+\])", output, re.I);
+            groupdata = re.findall(r"(\[[\w\s\-\_\{\}\.\$]+\])", output, re.I);
 
-                for data in range(0, len(groupdata), 2):
-                    print("[+] Information for group '{}' (RID {}):".format(groupdata[data].strip("[]"), int(groupdata[(data+1)].strip("[]"), 16)));
+            for data in range(0, len(groupdata), 2):
+                print("[+] Information for group '{}' (RID {}):".format(groupdata[data].strip("[]"), int(groupdata[(data+1)].strip("[]"), 16)));
 
-                    doutput = subprocess.check_output(["net", "rpc", "group", "members", groupdata[data].strip("[]"), "-I", args.t, "-U", "{}%{}".format(args.u, args.p)]).decode("UTF-8");
+                doutput = subprocess.check_output(["net", "rpc", "group", "members", groupdata[data].strip("[]"), "-I", args.t, "-U", "{}%{}".format(args.u, args.p)]).decode("UTF-8");
 
-                    if doutput or doutput is not " " or doutput is not "":
-                        print("Members List:\n{}".format(doutput));
-                    else:
-                        print("It appears that this group has no members");
+                if doutput or doutput is not " " or doutput is not "":
+                    print("Members List:\n{}".format(doutput));
+                else:
+                    print("It appears that this group has no members");
 
-                    if args.d:
-                        get_group_details_from_rid(int(groupdata[(data+1)].strip("[]"), 16), args);
+                if args.d:
+                    get_group_details_from_rid(int(groupdata[(data+1)].strip("[]"), 16), args);
 
-                print("\n");
-
+            print("\n");
     except subprocess.CalledProcessError as cpe:
         print(cpe.output.decode("UTF-8"));
 
@@ -402,6 +373,40 @@ def enum_password_policy(args):
         return 0;
 
 
+def enum_users(args):
+    try:
+        if args.v:
+            print("[V] Attempting to get userlist with querydispinfo");
+
+        output = subprocess.check_output(["rpcclient", "-W", args.w, "-c querydispinfo", "-U", "{}%{}".format(args.u, args.p), args.t]).decode("UTF-8");
+
+        if output.find("NT_STATUS_ACCESS_DENIED") > -1:
+            print("[E] Couldn't find users using querydispinfo: NT_STATUS_ACCESS_DENIED\n");
+        elif output.find("NT_STATUS_INVALID_PARAMETER") > -1:
+            print("[E] Couldn't find users using querydispinfo: NT_STATUS_INVALID_PARAMETER\n");
+        else:
+            print(output);
+
+        print("\n");
+
+        #GET USER RIDS
+        userenumdata = subprocess.check_output(["rpcclient", "-W", args.w, "-c enumdomusers", "-U", "{}%{}".format(args.u, args.p), args.t]).decode("UTF-8");
+        userdata = re.findall(r"(\[[\w\s\-\_\{\}\.\$]+\])", userenumdata, re.I);
+
+        if args.v:
+            print("[V] Attempting to get userlist with enumdomusers");
+
+        if userenumdata.find("NT_STATUS_ACCESS_DENIED") > -1:
+            print("[E] Couldn't find users using querydispinfo: NT_STATUS_ACCESS_DENIED\n");
+        elif userenumdata.find("NT_STATUS_INVALID_PARAMETER") > -1:
+            print("[E] Couldn't find users using querydispinfo: NT_STATUS_INVALID_PARAMETER\n");
+        else:
+            for data in range(0, len(userdata), 2):
+                print("User: {}\{} ----- RID: {}".format(args.w, userdata[data].strip("[]"), int(userdata[(data + 1)].strip("[]"), 16)));
+    except subprocess.CalledProcessError as cpe:
+        print(cpe.output.decode("UTF-8"));
+
+
 def enum_shares(args):
     try:
         if args.v:
@@ -418,7 +423,41 @@ def enum_shares(args):
         print(cpe.output.decode("UTF-8"));
 
 
+def enum_shares_unauth(args):
+    try:
+        with open(args.s, "r") as file:
+            shares = file.read().splitlines();
+
+        for share in shares:
+            output = subprocess.Popen(["smbclient", "-W", args.w, r"//{}/{}".format(args.t, share), "-c", "dir " "-U", "{}%{}".format(args.u, args.p)], stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
+
+            if re.search("blocks of size|blocks available", output, re.I):
+                print("{} EXISTS, Allows access using username: {}, password: {}\n".format(share, args.u, args.p));
+            elif re.search("NT_STATUS_BAD_NETWORK_NAME tree connect failed|NT_STATUS_BAD_NETWORK_NAME", output, re.I):
+                print("{} doesn't exist\n".format(share));
+            elif re.search("NT_STATUS_ACCESS_DENIED", output, re.I):
+                print("{} EXISTS\n".format(share));
+            else:
+                print(output);
+    except subprocess.CalledProcessError as cpe:
+        print(cpe.output.decode("UTF-8"));
+
+
+def get_printer_info(args):
+    try:
+        if args.v:
+            print("[V] Attempting to get printer info with enumprinters\n");
+
+        output = subprocess.check_output(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), "-c enumprinters", args.t]).decode("UTF-8");
+
+        print("{}\n\n".format(output));
+    except subprocess.CalledProcessError as cpe:
+        print(cpe.output.decode("UTF-8"));
+
+
 def main():
+    timestart = datetime.datetime.now();
+
     carglist = setArgs(getArgs());
     checkDependentProgs(dependent_programs, carglist.v);
     checkOptProgs(optional_dependent_programs, carglist.v);
@@ -440,20 +479,26 @@ def main():
 [*] Script has started...
 [*] Use CTRL+C to cancel the script at anytime.
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+CREDIT FOR THE ORIGINAL PERL VERSION OF ENUM4LINUX GOES 
+TO MARK LOWE, PORTCULLIS LABS & CONTRIBUTORS TO THE 
+ENUM4LINUX PROJECT
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
 +------------------------------+
 |     TARGETING INFORMATION    |
 +------------------------------+
-
 Starting Enum4LinuxPy v{} at {}
 Target --------------------> {}
 RID Ranges ----------------> {}
 Username ------------------> {}
 Password ------------------> {}
 Known Usernames -----------> {}
-""".format(version, datetime.datetime.now().strftime("%b %d %Y %H:%M:%S"), carglist.t, carglist.R, carglist.u, carglist.p, carglist.k));
+""".format(version, timestart.strftime("%b %d %Y %H:%M:%S"), carglist.t, carglist.R, carglist.u, carglist.p, carglist.k));
 
 
-    #Basic Enumeration & Check Session--------------------------------------------------------------------
+    #Basic Enumeration & Check Session----------------------------------------------------------------------------
 
     #WORKGOUP/DOMAIN NAME INFORMATION
     title = [["Enumerating Workgroup/Domain on {}".format(carglist.t).title()]];
@@ -507,7 +552,14 @@ Known Usernames -----------> {}
 
 
 
-    #Enum-compatiable functions-------------------------------------------------------------------------------
+    #Enum-compatiable functions-----------------------------------------------------------------------------------
+
+    if (carglist.U):
+        title = [["Users on {}".format(carglist.t).title()]];
+        header = terminaltables.AsciiTable(title);
+        print(header.table);
+
+        enum_users(carglist);
 
     if (carglist.S):
         title = [["Share Enumeration on {}".format(carglist.t).title()]];
@@ -529,14 +581,38 @@ Known Usernames -----------> {}
         print(header.table);
 
         enum_groups(carglist);
+        #enum_dom_groups(carglist);
+
+        # enum_machines()
+        # enum_lsa_policy()
 
 
-    #enum_names()
-    #enum_dom_users()
-    #enum_machines()
-    #enum_lsa_policy()
+    #Misc functions-----------------------------------------------------------------------------------------------
+    if carglist.s:
+        title = [["Brute Force Share Enumeration on {}".format(carglist.t).title()]];
+        header = terminaltables.AsciiTable(title);
+        print(header.table);
+
+        enum_shares_unauth(carglist);
+
+    if carglist.i:
+        title = [["Getting printer info for {}".format(carglist.t).title()]];
+        header = terminaltables.AsciiTable(title);
+        print(header.table);
+
+        get_printer_info(carglist);
+
+
+
+    #Enum4LinuxPy complete
+    timeend = datetime.datetime.now();
+    elapsedtime = (timeend-timestart);
+    print("[!] Enum4LinuxPy completed at {} - Duration of time ran for {}".format(timeend, elapsedtime));
 
 
 
 if __name__ == '__main__':
-    main();
+    try:
+        main();
+    except KeyboardInterrupt as kbi:
+        print("\nEnum4Linux.py has been stopped\n");
