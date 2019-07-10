@@ -412,11 +412,15 @@ def enum_users(args):
         else:
             for data in range(0, len(userdata), 2):
                 print("User: {}\{} ----- RID: {}".format(args.w, userdata[data].strip("[]"), int(userdata[(data + 1)].strip("[]"), 16)));
+
+            print("");
     except subprocess.CalledProcessError as cpe:
         print(cpe.output.decode("UTF-8"));
 
 
 def enum_shares(args):
+    output = None;
+
     try:
         if args.v:
             print("[V] Attempting to get share list using authentication");
@@ -428,6 +432,35 @@ def enum_shares(args):
             print("[E] Can't list shares: NT_STATUS_ACCESS_DENIED\n");
         else:
             print(output);
+    except subprocess.CalledProcessError as cpe:
+        print(cpe.output.decode("UTF-8"));
+
+    try:
+        print("\n[+] Attempting to map shares on {}\n".format(args.t));
+
+        for share in re.findall("\n\s*([ \S]+?)\s+(?:Disk|IPC|Printer)", output, re.I):
+            if args.v:
+                print("[V] Attempting map to share //{}/{} with smbclient\n".format(args.t, share));
+
+            map_response = subprocess.Popen(["smbclient", "-W", args.w, r"//{}/{}".format(args.t, share), "-U", "{}%{}".format(args.u, args.p), "-c dir"], stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
+
+            if map_response.find("NT_STATUS_ACCESS_DENIED listing") > -1:
+                print("""\t[+] Share: {}
+            Mapping: OK
+            Listing: DENIED\n
+                """.format(share));
+            elif map_response.find("tree connect failed: NT_STATUS_ACCESS_DENIED") > -1:
+                print("""\t[+] Share: {}
+            Mapping: DENIED
+            Listing: N/A\n
+                """.format(share));
+            elif re.search("\n\s+\.\.\s+D.*\d{4}\n", map_response, re.I):
+                print("""\t[+] Share: {}
+            Mapping: OK
+            Listing: OK\n
+                """.format(share));
+            else:
+                print("\t[E] Can't understand response for {}: {}\n".format(share, map_response));
     except subprocess.CalledProcessError as cpe:
         print(cpe.output.decode("UTF-8"));
 
@@ -490,6 +523,15 @@ def enum_users_rids(args):
                 continue;
             else:
                 continue;
+
+
+        # for sid in output.splitlines():
+        #     if not sid and args.u:
+        #         if args.v:
+        #             print("[V] WARNING: Can\'t get SID.  Maybe none of the 'known' users really exist.  Try others with -k.  Trying null session.\n");
+        #
+        #         for known_username in args.k:
+
 
         print("");
     except subprocess.CalledProcessError as cpe:
