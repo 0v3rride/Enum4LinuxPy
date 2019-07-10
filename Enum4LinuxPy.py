@@ -8,7 +8,6 @@ import re;
 import sys;
 
 #Global Vars
-version = "1.0.0";
 dependent_programs = ["nmblookup", "net", "rpcclient", "smbclient"];
 optional_dependent_programs = ["polenum", "ldapsearch"];
 
@@ -127,7 +126,15 @@ def getArgs():
     Simple wrapper around the tools in the samba package to provide similar 
     functionality to enum.exe (formerly from www.bindview.com).  Some additional 
     features such as RID cycling have also been added for convenience.
-    """, usage="python Enum4LinuxPy.py -t <target> <options>", prog="Enum4LinuxPy v{} https://github.com/0v3rride Copyright (C) Ryan Gore (0v3rride)".format(version),
+    """,
+    usage="""python Enum4LinuxPy.py -t <target> <options>
+    E.g:
+    python Enum4LinuxPy.py -t 10.10.x.x -a
+    python Enum4LinuxPy.py -t 10.20.x.x -l
+    python Enum4LinuxPy.py -t 192.168.x.x -R 1000-2000 500-600 -k administrator wsusadmin exchadmin root guest admin
+    
+    NOTE that -R or -k take a list as arguments and only require a space separation delimitation)""",
+    prog="Enum4LinuxPy https://github.com/0v3rride (Ryan Gore)",
     epilog="""
     RID cycling should extract a list of users from Windows (or Samba) hosts       
     which have RestrictAnonymous set to 1 (Windows NT and 2000), or "Network    
@@ -172,11 +179,11 @@ def getArgs():
     Keep searching RIDs until n number of consecutive RIDs don't correspond to a username. 
     Implies RID range ends at highest_rid. Useful against DCs (default 10).""");
     addops.add_argument("-k", required=False, type=str, nargs='+', default=["administrator", "guest", "krbtgt", "domain admins", "root", "bin", "none"], help="""
-    User(s) that exists on remote system (default: known_usernames).
-    Used to get sid with "lookupsid known_username" Use commas to try several users: -k admin,user1,user2)""")
+    User(s) that exists on remote system (default: ["administrator", "guest", "krbtgt", "domain admins", "root", "bin", "none"].
+    Used to get sid with "lookupsid known_username" Use spaces to try several users: -k admin user1 user2)""")
     addops.add_argument("-w", required=False, type=str, default=None, help="Specify workgroup manually (usually found automatically)");
     addops.add_argument("-s", required=False, type=str, default=None, help="path to list for brute force guessing share names");
-    addops.add_argument("-R", required=False, type=str, nargs='+', default=["500-550", "1000-1050"], help="RID ranges to enumerate (default: rid_range, implies -r)");
+    addops.add_argument("-R", required=False, type=str, nargs='+', default=["500-550", "1000-1050"], help="RID ranges to enumerate (default: rid_range, implies -r) Use spaces to try several rid ranges: -R 0-100 1000-2500 500-600)");
 
     return parser.parse_args();
 
@@ -425,6 +432,70 @@ def enum_shares(args):
         print(cpe.output.decode("UTF-8"));
 
 
+def enum_users_rids(args):
+    try:
+        #Get SID with known usernames
+        for known_username in args.k:
+            output = subprocess.Popen(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c lookupnames '{}'".format(known_username)], stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
+
+            if args.v:
+                print("[V] Attempting to get SID with lookupnames\n");
+                print("[V] Assuming that user {} exists\n".format(known_username));
+
+            logon = "username {}, password {}".format(args.u, args.p);
+
+            if output.find("NT_STATUS_ACCESS_DENIED") > -1:
+                print("[E] Couldn't get SID: NT_STATUS_ACCESS_DENIED.  RID cycling not possible.\n");
+                break;
+            elif output.find("NT_STATUS_NONE_MAPPED") > -1:
+                if args.v:
+                    print("[V] User {} doesn't exist. User enumeration should be possible, but SID needed...\n".format(known_username));
+                continue;
+            elif re.search("(S-1-5-[\d]+-[\d-]+)", output, re.I):
+                print("[I] Found new SID: {}".format(output));
+                continue;
+            elif re.search("(S-1-5-21-[\d]+-[\d-]+)", output, re.I):
+                print("[I] Found new SID: {}".format(output));
+                continue;
+            elif re.search("(S-1-5-22-[\d]+-[\d-]+)", output, re.I):
+                print("[I] Found new SID: {}".format(output));
+                continue;
+            else:
+                continue;
+    except subprocess.CalledProcessError as cpe:
+        print(cpe.output.decode("UTF-8"));
+
+    #Get some more SIDs
+    try:
+        if args.v:
+            print("[V] Attempting to get SIDs from {} with lsaenumsid\n".format(args.t));
+
+        output = subprocess.Popen(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c lsaenumsid"], stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
+
+        for sid in output.splitlines():
+            if args.v:
+                print("[V] Processing SID {}\n".format(sid));
+
+            if sid.find("NT_STATUS_ACCESS_DENIED") > -1:
+                print("[E] Couldn't get SID: NT_STATUS_ACCESS_DENIED.  RID cycling not possible.\n");
+                continue;
+            elif re.search("(S-1-5-[\d]+-[\d-]+)", sid, re.I):
+                print("[I] Found new SID: {}".format(sid));
+                continue;
+            elif re.search("(S-1-5-21-[\d]+-[\d-]+)", sid, re.I):
+                print("[I] Found new SID: {}".format(sid));
+                continue;
+            elif re.search("(S-1-5-22-[\d]+-[\d-]+)", sid, re.I):
+                print("[I] Found new SID: {}".format(sid));
+                continue;
+            else:
+                continue;
+
+        print("");
+    except subprocess.CalledProcessError as cpe:
+        print(cpe.output.decode("UTF-8"));
+
+
 def enum_shares_unauth(args):
     try:
         with open(args.s, "r") as file:
@@ -491,13 +562,13 @@ ENUM4LINUX PROJECT
 +------------------------------+
 |     TARGETING INFORMATION    |
 +------------------------------+
-Starting Enum4LinuxPy v{} at {}
+Starting Enum4LinuxPy at {}
 Target --------------------> {}
 RID Ranges ----------------> {}
 Username ------------------> {}
 Password ------------------> {}
 Known Usernames -----------> {}
-""".format(version, timestart.strftime("%b %d %Y %H:%M:%S"), carglist.t, carglist.R, carglist.u, carglist.p, carglist.k));
+""".format(timestart.strftime("%b %d %Y %H:%M:%S"), carglist.t, carglist.R, carglist.u, carglist.p, carglist.k));
 
 
     #Basic Enumeration & Check Session----------------------------------------------------------------------------
@@ -590,6 +661,13 @@ Known Usernames -----------> {}
 
 
     #Misc functions-----------------------------------------------------------------------------------------------
+    if carglist.r:
+        title = [["Users on {} via RID cycling (RIDS: {})".format(carglist.t, carglist.R).title()]];
+        header = terminaltables.AsciiTable(title);
+        print(header.table);
+
+        enum_users_rids(carglist);
+
     if carglist.s:
         title = [["Brute Force Share Enumeration on {}".format(carglist.t).title()]];
         header = terminaltables.AsciiTable(title);
