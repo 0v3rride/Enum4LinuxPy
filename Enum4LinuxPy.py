@@ -93,6 +93,11 @@ def setArgs(uargs):
     else:
         uargs.a = False;
 
+    #check if null creds wanted
+    if uargs.z:
+        uargs.u = "";
+        uargs.p = "";
+
     return uargs;
 
 
@@ -151,14 +156,15 @@ def getArgs():
     std = parser.add_argument_group("Options similar to Enum4Linux.pl");
 
     std.add_argument("-t", required=True, type=str, default=None, help="specifiy the remote host");
-    std.add_argument("-u", required=False, type=str, default="", help="specifiy username to use (default "")");
-    std.add_argument("-p", required=False, type=str, default="", help="specifiy password to use (default "")");
+    std.add_argument("-u", required=False, type=str, default="root", help="specifiy username to use (default 'root')");
+    std.add_argument("-p", required=False, type=str, default="root", help="specifiy password to use (default 'root')");
     std.add_argument("-d", required=False, action="store_true", default=False, help="be detailed, applies to -U and -S");
     std.add_argument("-G", required=False, action="store_true", default=False, help="get group and member list");
     std.add_argument("-P", required=False, action="store_true", default=False, help="get password policy information");
     std.add_argument("-S", required=False, action="store_true", default=False, help="get sharelist");
     std.add_argument("-M", required=False, action="store_true", default=False, help="get machine list");
     std.add_argument("-U", required=False, action="store_true", default=False, help="get userlist");
+    std.add_argument("-z", required=False, action="store_true", default=False, help="use null creds instead of junk creds");
 
     # parser.add_argument("-L", required=False, action="store_true", default=False, help="get group and member list");
     # parser.add_argument("-N", required=False, action="store_true", default=False, help="get sharelist");
@@ -280,7 +286,7 @@ def get_os_info(args):
 
         output = subprocess.check_output(["smbclient", "-W", args.w, r"//{}/ipc$".format(args.t), "-U", "{}%{}".format(args.u, args.p), "-c", "q"]).decode("UTF-8");
 
-        if(output is not None or output is not " " or output is not ""):
+        if re.search("(Domain=[^\n]+)", output, re.I):
             print("[+] OS info for {} from smbclient: {}\n".format(args.t, output));
     except subprocess.CalledProcessError as cpe:
         print("SMBCLIENT Error: {}".format(cpe.output.decode("UTF-8")));
