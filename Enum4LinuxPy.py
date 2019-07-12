@@ -36,43 +36,84 @@ optional_dependent_programs = ["polenum", "ldapsearch"];
 #    along with this program; if not, write to the Free Softwar
 #    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA
 
-nbt_info = (
-["__MSBROWSE__", "01", 0, "Master Browser"],
-["INet~Services", "1C", 0, "IIS"],
-["IS~", "00", 1, "IIS"],
-["", "00", 1, "Workstation Service"],
-["", "01", 1, "Messenger Service"],
-["", "03", 1, "Messenger Service"],
-["", "06", 1, "RAS Server Service"],
-["", "1F", 1, "NetDDE Service"],
-["", "20", 1, "File Server Service"],
-["", "21", 1, "RAS Client Service"],
-["", "22", 1, "Microsoft Exchange Interchange(MSMail Connector)"],
-["", "23", 1, "Microsoft Exchange Store"],
-["", "24", 1, "Microsoft Exchange Directory"],
-["", "30", 1, "Modem Sharing Server Service"],
-["", "31", 1, "Modem Sharing Client Service"],
-["", "43", 1, "SMS Clients Remote Control"],
-["", "44", 1, "SMS Administrators Remote Control Tool"],
-["", "45", 1, "SMS Clients Remote Chat"],
-["", "46", 1, "SMS Clients Remote Transfer"],
-["", "4C", 1, "DEC Pathworks TCPIP service on Windows NT"],
-["", "52", 1, "DEC Pathworks TCPIP service on Windows NT"],
-["", "87", 1, "Microsoft Exchange MTA"],
-["", "6A", 1, "Microsoft Exchange IMC"],
-["", "BE", 1, "Network Monitor Agent"],
-["", "BF", 1, "Network Monitor Application"],
-["", "03", 1, "Messenger Service"],
-["", "00", 0, "Domain/Workgroup Name"],
-["", "1B", 1, "Domain Master Browser"],
-["", "1C", 0, "Domain Controllers"],
-["", "1D", 1, "Master Browser"],
-["", "1E", 0, "Browser Service Elections"],
-["", "2B", 1, "Lotus Notes Server Service"],
-["IRISMULTICAST", "2F", 0, "Lotus Notes"],
-["IRISNAMESERVER", "33", 0, "Lotus Notes"],
-['Forte_$ND800ZA', "20", 1, "DCA IrmaLan Gateway Server Service"]
-);
+#ORIGINAL PERL NBNS MAPPINGS
+# nbt_info = (
+# ["__MSBROWSE__", "01", 0, "Master Browser"],
+# ["INet~Services", "1C", 0, "IIS"],
+# ["IS~", "00", 1, "IIS"],
+# ["", "00", 1, "Workstation Service"],
+# ["", "01", 1, "Messenger Service"],
+# ["", "03", 1, "Messenger Service"],
+# ["", "06", 1, "RAS Server Service"],
+# ["", "1F", 1, "NetDDE Service"],
+# ["", "20", 1, "File Server Service"],
+# ["", "21", 1, "RAS Client Service"],
+# ["", "22", 1, "Microsoft Exchange Interchange(MSMail Connector)"],
+# ["", "23", 1, "Microsoft Exchange Store"],
+# ["", "24", 1, "Microsoft Exchange Directory"],
+# ["", "30", 1, "Modem Sharing Server Service"],
+# ["", "31", 1, "Modem Sharing Client Service"],
+# ["", "43", 1, "SMS Clients Remote Control"],
+# ["", "44", 1, "SMS Administrators Remote Control Tool"],
+# ["", "45", 1, "SMS Clients Remote Chat"],
+# ["", "46", 1, "SMS Clients Remote Transfer"],
+# ["", "4C", 1, "DEC Pathworks TCPIP service on Windows NT"],
+# ["", "52", 1, "DEC Pathworks TCPIP service on Windows NT"],
+# ["", "87", 1, "Microsoft Exchange MTA"],
+# ["", "6A", 1, "Microsoft Exchange IMC"],
+# ["", "BE", 1, "Network Monitor Agent"],
+# ["", "BF", 1, "Network Monitor Application"],
+# ["", "03", 1, "Messenger Service"],
+# ["", "00", 0, "Domain/Workgroup Name"],
+# ["", "1B", 1, "Domain Master Browser"],
+# ["", "1C", 0, "Domain Controllers"],
+# ["", "1D", 1, "Master Browser"],
+# ["", "1E", 0, "Browser Service Elections"],
+# ["", "2B", 1, "Lotus Notes Server Service"],
+# ["IRISMULTICAST", "2F", 0, "Lotus Notes"],
+# ["IRISNAMESERVER", "33", 0, "Lotus Notes"],
+# ['Forte_$ND800ZA', "20", 1, "DCA IrmaLan Gateway Server Service"]
+# );
+
+#TUPLE BASED DICTIONARY
+nbt_info = {
+("__MSBROWSE__", "01") : "Master Browser",
+("INet~Services", "1c") : "IIS",
+("IS~", "00") : "IIS",
+("", "00") : "Workstation Service/Domain/Workgroup Name",
+("", "01") : "Messenger Service",
+("", "03") : "Messenger Service",
+("", "06") : "RAS Server Service",
+("", "1f") : "NetDDE Service",
+("", "20") : "File Server Service",
+("", "21") : "RAS Client Service",
+("", "22") : "Microsoft Exchange Interchange(MSMail Connector)",
+("", "23") : "Microsoft Exchange Store",
+("", "24") : "Microsoft Exchange Directory",
+("", "30") : "Modem Sharing Server Service",
+("", "31") : "Modem Sharing Client Service",
+("", "43") : "SMS Clients Remote Control",
+("", "44") : "SMS Administrators Remote Control Tool",
+("", "45") : "SMS Clients Remote Chat",
+("", "46") : "SMS Clients Remote Transfer",
+("", "4c") : "DEC Pathworks TCPIP service on Windows NT",
+("", "52") : "DEC Pathworks TCPIP service on Windows NT",
+("", "87") : "Microsoft Exchange MTA",
+("", "6a") : "Microsoft Exchange IMC",
+("", "be") : "Network Monitor Agent",
+("", "bf") : "Network Monitor Application",
+("", "03") : "Messenger Service",
+("", "02") : "Domain/Workgroup Name", #nbt stat code is really <00>, but 02 to prevent duplication
+("", "1b") : "Domain Master Browser",
+("", "1c") : "Domain Controllers",
+("", "1d") : "Master Browser",
+("", "1e") : "Browser Service Elections",
+("", "2b") : "Lotus Notes Server Service",
+("IRISMULTICAST", "2f") : "Lotus Notes",
+("IRISNAMESERVER", "33") : "Lotus Notes",
+('Forte_$ND800ZA', "20") : "DCA IrmaLan Gateway Server Service"
+}
+
 ####################### end of nbtscan-derrived code ############################
 
 
@@ -214,9 +255,28 @@ def get_workgroup(args):
 def get_nbtstat(target):
     try:
         output = subprocess.check_output(["nmblookup", "-A", target]).decode("UTF-8");
-        print("{}\n".format(output));
+        print("{}\n".format(nbt_to_human(output)));
     except subprocess.CalledProcessError as cpe:
         print(cpe.output.decode("UTF-8"));
+
+
+def nbt_to_human(output):
+    stringbuilder = [];
+    servicedata = re.findall("(\t[\w\-\.]+|<\w{1,2}>)", output, re.I);
+    servicedata.remove("\tMAC");
+
+    for i in range(0, len(servicedata), 2):
+        servicename = servicedata[i].strip("\t\n\r\0");
+
+        for line in output.splitlines():
+            if servicename is not "__MSBROWSE__" or servicename is not "INet~Services" or servicename is not "IS~" or servicename is not "IRISNAMESERVER" or servicename is not "IRISMULTICAST" or servicename is not "Forte_$ND800ZA":
+                if servicedata[i+1] in line:
+                    stringbuilder.append(str(line).replace(servicedata[i+1], nbt_info[("", servicedata[i+1].strip("<>"))]));
+            else:
+                if servicedata[i] in line and servicedata[i+1] in line:
+                    stringbuilder.append(str(line).replace(servicedata[i+1], nbt_info[(servicedata[i], servicedata[i+1].strip("<>"))]));
+
+    return "\n".join(stringbuilder);
 
 
 def make_session(args):
