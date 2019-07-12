@@ -36,43 +36,84 @@ optional_dependent_programs = ["polenum", "ldapsearch"];
 #    along with this program; if not, write to the Free Softwar
 #    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA
 
-nbt_info = (
-["__MSBROWSE__", "01", 0, "Master Browser"],
-["INet~Services", "1C", 0, "IIS"],
-["IS~", "00", 1, "IIS"],
-["", "00", 1, "Workstation Service"],
-["", "01", 1, "Messenger Service"],
-["", "03", 1, "Messenger Service"],
-["", "06", 1, "RAS Server Service"],
-["", "1F", 1, "NetDDE Service"],
-["", "20", 1, "File Server Service"],
-["", "21", 1, "RAS Client Service"],
-["", "22", 1, "Microsoft Exchange Interchange(MSMail Connector)"],
-["", "23", 1, "Microsoft Exchange Store"],
-["", "24", 1, "Microsoft Exchange Directory"],
-["", "30", 1, "Modem Sharing Server Service"],
-["", "31", 1, "Modem Sharing Client Service"],
-["", "43", 1, "SMS Clients Remote Control"],
-["", "44", 1, "SMS Administrators Remote Control Tool"],
-["", "45", 1, "SMS Clients Remote Chat"],
-["", "46", 1, "SMS Clients Remote Transfer"],
-["", "4C", 1, "DEC Pathworks TCPIP service on Windows NT"],
-["", "52", 1, "DEC Pathworks TCPIP service on Windows NT"],
-["", "87", 1, "Microsoft Exchange MTA"],
-["", "6A", 1, "Microsoft Exchange IMC"],
-["", "BE", 1, "Network Monitor Agent"],
-["", "BF", 1, "Network Monitor Application"],
-["", "03", 1, "Messenger Service"],
-["", "00", 0, "Domain/Workgroup Name"],
-["", "1B", 1, "Domain Master Browser"],
-["", "1C", 0, "Domain Controllers"],
-["", "1D", 1, "Master Browser"],
-["", "1E", 0, "Browser Service Elections"],
-["", "2B", 1, "Lotus Notes Server Service"],
-["IRISMULTICAST", "2F", 0, "Lotus Notes"],
-["IRISNAMESERVER", "33", 0, "Lotus Notes"],
-['Forte_$ND800ZA', "20", 1, "DCA IrmaLan Gateway Server Service"]
-);
+#ORIGINAL PERL NBNS MAPPINGS
+# nbt_info = (
+# ["__MSBROWSE__", "01", 0, "Master Browser"],
+# ["INet~Services", "1C", 0, "IIS"],
+# ["IS~", "00", 1, "IIS"],
+# ["", "00", 1, "Workstation Service"],
+# ["", "01", 1, "Messenger Service"],
+# ["", "03", 1, "Messenger Service"],
+# ["", "06", 1, "RAS Server Service"],
+# ["", "1F", 1, "NetDDE Service"],
+# ["", "20", 1, "File Server Service"],
+# ["", "21", 1, "RAS Client Service"],
+# ["", "22", 1, "Microsoft Exchange Interchange(MSMail Connector)"],
+# ["", "23", 1, "Microsoft Exchange Store"],
+# ["", "24", 1, "Microsoft Exchange Directory"],
+# ["", "30", 1, "Modem Sharing Server Service"],
+# ["", "31", 1, "Modem Sharing Client Service"],
+# ["", "43", 1, "SMS Clients Remote Control"],
+# ["", "44", 1, "SMS Administrators Remote Control Tool"],
+# ["", "45", 1, "SMS Clients Remote Chat"],
+# ["", "46", 1, "SMS Clients Remote Transfer"],
+# ["", "4C", 1, "DEC Pathworks TCPIP service on Windows NT"],
+# ["", "52", 1, "DEC Pathworks TCPIP service on Windows NT"],
+# ["", "87", 1, "Microsoft Exchange MTA"],
+# ["", "6A", 1, "Microsoft Exchange IMC"],
+# ["", "BE", 1, "Network Monitor Agent"],
+# ["", "BF", 1, "Network Monitor Application"],
+# ["", "03", 1, "Messenger Service"],
+# ["", "00", 0, "Domain/Workgroup Name"],
+# ["", "1B", 1, "Domain Master Browser"],
+# ["", "1C", 0, "Domain Controllers"],
+# ["", "1D", 1, "Master Browser"],
+# ["", "1E", 0, "Browser Service Elections"],
+# ["", "2B", 1, "Lotus Notes Server Service"],
+# ["IRISMULTICAST", "2F", 0, "Lotus Notes"],
+# ["IRISNAMESERVER", "33", 0, "Lotus Notes"],
+# ['Forte_$ND800ZA', "20", 1, "DCA IrmaLan Gateway Server Service"]
+# );
+
+#TUPLE BASED DICTIONARY
+nbt_info = {
+("..__MSBROWSE__.", "01") : "Master Browser",
+("INet~Services", "1c") : "IIS",
+("IS~", "00") : "IIS",
+("", "00") : "Workstation Service",
+("", "01") : "Messenger Service",
+("", "03") : "Messenger Service",
+("", "06") : "RAS Server Service",
+("", "1f") : "NetDDE Service",
+("", "20") : "File Server Service",
+("", "21") : "RAS Client Service",
+("", "22") : "Microsoft Exchange Interchange(MSMail Connector)",
+("", "23") : "Microsoft Exchange Store",
+("", "24") : "Microsoft Exchange Directory",
+("", "30") : "Modem Sharing Server Service",
+("", "31") : "Modem Sharing Client Service",
+("", "43") : "SMS Clients Remote Control",
+("", "44") : "SMS Administrators Remote Control Tool",
+("", "45") : "SMS Clients Remote Chat",
+("", "46") : "SMS Clients Remote Transfer",
+("", "4C") : "DEC Pathworks TCPIP service on Windows NT",
+("", "52") : "DEC Pathworks TCPIP service on Windows NT",
+("", "87") : "Microsoft Exchange MTA",
+("", "6A") : "Microsoft Exchange IMC",
+("", "Be") : "Network Monitor Agent",
+("", "Bf") : "Network Monitor Application",
+("", "03") : "Messenger Service",
+("", "02") : "Domain/Workgroup Name",  #nbt stat code is really 00, but is 02 to prevent duplication
+("", "1b") : "Domain Master Browser",
+("", "1c") : "Domain Controllers",
+("", "1d") : "Master Browser",
+("", "1e") : "Browser Service Elections",
+("", "2b") : "Lotus Notes Server Service",
+("IRISMULTICAST", "2f") : "Lotus Notes",
+("IRISNAMESERVER", "33") : "Lotus Notes",
+('Forte_$ND800ZA', "20") : "DCA IrmaLan Gateway Server Service"
+}
+
 ####################### end of nbtscan-derrived code ############################
 
 
@@ -94,9 +135,9 @@ def setArgs(uargs):
         uargs.a = False;
 
     #check if null creds wanted
-    if uargs.z:
-        uargs.u = "";
-        uargs.p = "";
+    if uargs.j:
+        uargs.u = "Enum4Linux";
+        uargs.p = "Py";
 
     return uargs;
 
@@ -156,15 +197,15 @@ def getArgs():
     std = parser.add_argument_group("Options similar to Enum4Linux.pl");
 
     std.add_argument("-t", required=True, type=str, default=None, help="specifiy the remote host");
-    std.add_argument("-u", required=False, type=str, default="root", help="specifiy username to use (default 'root')");
-    std.add_argument("-p", required=False, type=str, default="root", help="specifiy password to use (default 'root')");
+    std.add_argument("-u", required=False, type=str, default="", help="specifiy username to use (default 'root')");
+    std.add_argument("-p", required=False, type=str, default="", help="specifiy password to use (default 'root')");
     std.add_argument("-d", required=False, action="store_true", default=False, help="be detailed, applies to -U and -S");
     std.add_argument("-G", required=False, action="store_true", default=False, help="get group and member list");
     std.add_argument("-P", required=False, action="store_true", default=False, help="get password policy information");
     std.add_argument("-S", required=False, action="store_true", default=False, help="get sharelist");
     std.add_argument("-M", required=False, action="store_true", default=False, help="get machine list");
     std.add_argument("-U", required=False, action="store_true", default=False, help="get userlist");
-    std.add_argument("-z", required=False, action="store_true", default=False, help="use null creds instead of junk creds");
+    std.add_argument("-j", required=False, action="store_true", default=False, help="junk creds (sometimes null session enumeration will not work with null creds)");
 
     # parser.add_argument("-L", required=False, action="store_true", default=False, help="get group and member list");
     # parser.add_argument("-N", required=False, action="store_true", default=False, help="get sharelist");
@@ -214,9 +255,33 @@ def get_workgroup(args):
 def get_nbtstat(target):
     try:
         output = subprocess.check_output(["nmblookup", "-A", target]).decode("UTF-8");
-        print("{}\n".format(output));
+        mac = output.splitlines()[len(output.splitlines())-2];
+        print("{}\n{}\n\n{}\n".format(output.splitlines()[0], nbt_to_human(output), mac));
     except subprocess.CalledProcessError as cpe:
         print(cpe.output.decode("UTF-8"));
+
+
+def nbt_to_human(output):
+    stringbuilder = [];
+    servicedata = re.findall("(\t[\w\-\.]+|<\w{1,2}>)", output, re.I);
+    servicedata.remove("\tMAC");
+    counter = 0;
+
+    for line in output.splitlines():
+        if counter < len(servicedata):
+            servicename = servicedata[counter].strip("\t");
+
+            if re.search("(..__MSBROWSE__.|INet~Services|IS~|IRISMULTICAST|IRISNAMESERVER|Forte_\$ND800ZA)", servicename, re.I):
+                stringbuilder.append("{}\t{}".format(line, nbt_info[servicename, servicedata[counter+1].strip("<>")]));
+                counter = (counter + 2);
+            elif re.search("<GROUP>", line, re.I) and re.search("<00>", line, re.I):
+                stringbuilder.append("{}\t{}".format(line, nbt_info["", "02"]));
+                counter = (counter + 2);
+            elif not re.search("(..__MSBROWSE__.|INet~Services|IS~|IRISMULTICAST|IRISNAMESERVER|Forte_\$ND800ZA)", servicename, re.I) and re.search(servicedata[counter+1], line, re.I):
+                stringbuilder.append("{}\t{}".format(line, nbt_info["", servicedata[counter+1].strip("<>")]));
+                counter = (counter + 2);
+
+    return "\n".join(stringbuilder);
 
 
 def make_session(args):
@@ -316,13 +381,19 @@ def enum_groups(args):
             output = subprocess.check_output(["rpcclient", "-W", args.w, "-U", r"{}%{}".format(args.u, args.p), args.t, "-c", "enumalsgroups {}".format(group)]).decode("UTF-8");
 
             if(group is "domain"):
-                print("[+] Getting Active Directory groups:\n");
+                if args.v:
+                    print("[V] Getting local groups with enumalsgroups\n");
+
+                print("[+] Getting local groups:\n");
             else:
+                if args.v:
+                    print("[V] Getting {} groups with enumalsgroups\n".format(group));
+
                 print("[+] Getting {} groups\n".format(group));
 
             if (output.find("error: NT_STATUS_ACCESS_DENIED") > -1):
                 if(group is "domain"):
-                    print("[E] Can't get Active Directory groups: NT_STATUS_ACCESS_DENIED\n");
+                    print("[E] Can't get local groups: NT_STATUS_ACCESS_DENIED\n");
                 else:
                     print("[E] Can't get {} groups: NT_STATUS_ACCESS_DENIED\n".format(group));
             else:
