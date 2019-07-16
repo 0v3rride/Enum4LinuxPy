@@ -36,45 +36,6 @@ optional_dependent_programs = ["polenum", "ldapsearch"];
 #    along with this program; if not, write to the Free Softwar
 #    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA
 
-#ORIGINAL PERL NBNS MAPPINGS
-# nbt_info = (
-# ["__MSBROWSE__", "01", 0, "Master Browser"],
-# ["INet~Services", "1C", 0, "IIS"],
-# ["IS~", "00", 1, "IIS"],
-# ["", "00", 1, "Workstation Service"],
-# ["", "01", 1, "Messenger Service"],
-# ["", "03", 1, "Messenger Service"],
-# ["", "06", 1, "RAS Server Service"],
-# ["", "1F", 1, "NetDDE Service"],
-# ["", "20", 1, "File Server Service"],
-# ["", "21", 1, "RAS Client Service"],
-# ["", "22", 1, "Microsoft Exchange Interchange(MSMail Connector)"],
-# ["", "23", 1, "Microsoft Exchange Store"],
-# ["", "24", 1, "Microsoft Exchange Directory"],
-# ["", "30", 1, "Modem Sharing Server Service"],
-# ["", "31", 1, "Modem Sharing Client Service"],
-# ["", "43", 1, "SMS Clients Remote Control"],
-# ["", "44", 1, "SMS Administrators Remote Control Tool"],
-# ["", "45", 1, "SMS Clients Remote Chat"],
-# ["", "46", 1, "SMS Clients Remote Transfer"],
-# ["", "4C", 1, "DEC Pathworks TCPIP service on Windows NT"],
-# ["", "52", 1, "DEC Pathworks TCPIP service on Windows NT"],
-# ["", "87", 1, "Microsoft Exchange MTA"],
-# ["", "6A", 1, "Microsoft Exchange IMC"],
-# ["", "BE", 1, "Network Monitor Agent"],
-# ["", "BF", 1, "Network Monitor Application"],
-# ["", "03", 1, "Messenger Service"],
-# ["", "00", 0, "Domain/Workgroup Name"],
-# ["", "1B", 1, "Domain Master Browser"],
-# ["", "1C", 0, "Domain Controllers"],
-# ["", "1D", 1, "Master Browser"],
-# ["", "1E", 0, "Browser Service Elections"],
-# ["", "2B", 1, "Lotus Notes Server Service"],
-# ["IRISMULTICAST", "2F", 0, "Lotus Notes"],
-# ["IRISNAMESERVER", "33", 0, "Lotus Notes"],
-# ['Forte_$ND800ZA', "20", 1, "DCA IrmaLan Gateway Server Service"]
-# );
-
 #TUPLE BASED DICTIONARY
 nbt_info = {
 ("..__MSBROWSE__.", "01") : "Master Browser",
@@ -129,7 +90,7 @@ def setArgs(uargs):
         uargs.i = True;
 
     #check all argument
-    if not uargs.U and not uargs.S and not uargs.G and not uargs.r and not uargs.p and not uargs.P and not uargs.o and not uargs.n and not uargs.i:
+    if not uargs.U and not uargs.S and not uargs.G and not uargs.r and not uargs.p and not uargs.P and not uargs.o and not uargs.n and not uargs.i and not uargs.e:
         uargs.a = True;
     else:
         uargs.a = False;
@@ -219,6 +180,9 @@ def getArgs():
     addops.add_argument("-n", required=False, action="store_true", default=False, help="Do an nmblookup (similar to nbtstat)");
     addops.add_argument("-l", required=False, action="store_true", default=False, help="Get some (limited) info via LDAP 389/TCP (for DCs only)");
     addops.add_argument("-v", required=False, action="store_true", default=False, help="Verbose. Shows full commands being run (net, rpcclient, etc.)");
+    addops.add_argument("-e", required=False, action="store_true", default=False, help="enumerate privileges");
+    addops.add_argument("-y", required=False, action="store_true", default=False, help="attempt to enumerate Domain Controller names");
+    addops.add_argument("-q", required=False, action="store_true", default=False,help="attempt to enumerate domain information");
     addops.add_argument("-a", required=False, action="store_true", default=False, help="""
     Do all simple enumeration (-U -S -G -P -r -o -n -i).
     This option is enabled if you don't provide any other options.""");
@@ -250,6 +214,40 @@ def get_workgroup(args):
     except subprocess.CalledProcessError as cpe:
         print("[E] Can't find workgroup/domain\n");
         args.w = "";
+
+
+def get_domain_info(args):
+    try:
+        if args.v:
+            print("[V] Attempting to get domain information with querydominfo\n");
+
+        output = subprocess.check_output(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c", "querydominfo"]).decode("UTF-8");
+
+        if output is not None:
+            print(output);
+    except subprocess.CalledProcessError as cpe:
+        print("[E] Unable to get domain information\n");
+
+
+def get_dc_names(args):
+    try:
+        if args.v:
+            print("[V] Attempting to get domain controller information with dsr_getdcname\n");
+
+        output = subprocess.check_output(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c", "dsr_getdcname {}".format(args.w)]).decode("UTF-8");
+
+        if output is not None:
+            print(output);
+
+        if args.v:
+            print("[V] Attempting to get a domain controller name with getdcname\n");
+
+        output = subprocess.check_output(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c", "getdcname {}".format(str(args.w).split('.')[0])]).decode("UTF-8");
+
+        if output is not None:
+            print(output);
+    except subprocess.CalledProcessError as cpe:
+        print("[E] Unable to get DC name and information\n");
 
 
 def get_nbtstat(target):
@@ -602,14 +600,6 @@ def enum_users_rids(args):
                 continue;
 
 
-        # for sid in output.splitlines():
-        #     if not sid and args.u:
-        #         if args.v:
-        #             print("[V] WARNING: Can\'t get SID.  Maybe none of the 'known' users really exist.  Try others with -k.  Trying null session.\n");
-        #
-        #         for known_username in args.k:
-
-
         print("");
     except subprocess.CalledProcessError as cpe:
         print(cpe.output.decode("UTF-8"));
@@ -635,6 +625,18 @@ def enum_shares_unauth(args):
         print(cpe.output.decode("UTF-8"));
 
 
+def enum_privs(args):
+    try:
+        if args.v:
+            print("[V] Attempting to get privilege info with enumprivs\n");
+
+        output = subprocess.check_output(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), "-c enumprivs", args.t]).decode("UTF-8");
+
+        print("{}\n".format(output));
+
+    except subprocess.CalledProcessError as cpe:
+        print(cpe.output.decode("UTF-8"));
+
 def get_printer_info(args):
     try:
         if args.v:
@@ -645,6 +647,7 @@ def get_printer_info(args):
         print("{}\n\n".format(output));
     except subprocess.CalledProcessError as cpe:
         print(cpe.output.decode("UTF-8"));
+
 
 
 def main():
@@ -743,6 +746,21 @@ Known Usernames -----------> {}
         get_os_info(carglist);
 
 
+    #Query-compatible functions-----------------------------------------------------------------------------------
+    if (carglist.q):
+        title = [["Getting Domain Information {}".format(carglist.t).title()]];
+        header = terminaltables.AsciiTable(title);
+        print(header.table);
+
+        get_domain_info(carglist);
+
+    if (carglist.y):
+        title = [["Getting Domain Controller Information {}".format(carglist.t).title()]];
+        header = terminaltables.AsciiTable(title);
+        print(header.table);
+
+        get_dc_names(carglist);
+
 
     #Enum-compatiable functions-----------------------------------------------------------------------------------
 
@@ -778,6 +796,13 @@ Known Usernames -----------> {}
         # enum_machines()
         # enum_lsa_policy()
 
+    #Enumerate privileges
+    if (carglist.e):
+        title = [["Privileges Enumeration on {}".format(carglist.t).title()]];
+        header = terminaltables.AsciiTable(title);
+        print(header.table);
+
+        enum_privs(carglist);
 
     #Misc functions-----------------------------------------------------------------------------------------------
     if carglist.r:
@@ -802,12 +827,10 @@ Known Usernames -----------> {}
         get_printer_info(carglist);
 
 
-
     #Enum4LinuxPy complete
     timeend = datetime.datetime.now();
     elapsedtime = (timeend-timestart);
     print("[!] Enum4LinuxPy completed at {} - Duration of time ran for {}".format(timeend, elapsedtime));
-
 
 
 if __name__ == '__main__':
