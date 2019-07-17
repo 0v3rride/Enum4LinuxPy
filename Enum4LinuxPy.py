@@ -6,10 +6,12 @@ import datetime;
 import terminaltables;
 import re;
 import sys;
+import time;
 
 #Global Vars
 dependent_programs = ["nmblookup", "net", "rpcclient", "smbclient"];
 optional_dependent_programs = ["polenum", "ldapsearch"];
+user_list = [];
 
 
 ###############################################################################
@@ -64,7 +66,7 @@ nbt_info = {
 ("", "Be") : "Network Monitor Agent",
 ("", "Bf") : "Network Monitor Application",
 ("", "03") : "Messenger Service",
-("", "02") : "Domain/Workgroup Name",  #nbt stat code is really 00, but is 02 to prevent duplication
+("", "02") : "Domain/Workgroup Name",  #nbt stat code is really 00, but is 02 to prevent duplication; difference between this and workstation is that Domain/Workgroup Name will have <GROUP> on the same line, workstation will not
 ("", "1b") : "Domain Master Browser",
 ("", "1c") : "Domain Controllers",
 ("", "1d") : "Master Browser",
@@ -79,6 +81,7 @@ nbt_info = {
 
 
 def setArgs(uargs):
+    #check arguments
     if uargs.a:
         uargs.U = True;
         uargs.S = True;
@@ -88,9 +91,7 @@ def setArgs(uargs):
         uargs.o = True;
         uargs.n = True;
         uargs.i = True;
-
-    #check all argument
-    if not uargs.U and not uargs.S and not uargs.G and not uargs.r and not uargs.p and not uargs.P and not uargs.o and not uargs.n and not uargs.i and not uargs.e:
+    elif not uargs.U and not uargs.S and not uargs.G and not uargs.r and not uargs.p and not uargs.P and not uargs.o and not uargs.n and not uargs.i and not uargs.e:
         uargs.a = True;
     else:
         uargs.a = False;
@@ -196,6 +197,13 @@ def getArgs():
     addops.add_argument("-w", required=False, type=str, default=None, help="Specify workgroup manually (usually found automatically)");
     addops.add_argument("-s", required=False, type=str, default=None, help="path to list for brute force guessing share names");
     addops.add_argument("-R", required=False, type=str, nargs='+', default=["500-550", "1000-1050"], help="RID ranges to enumerate (default: rid_range, implies -r) Use spaces to try several rid ranges: -R 0-100 1000-2500 500-600)");
+
+    extops = parser.add_argument_group("Extended functionality");
+    extops.add_argument("--spray", required=False, type=str, default=None, help="Perform password spray using rpcclient (value should be password to spray, a user list is built when enumerating them if possible)");
+    extops.add_argument("--timeout", required=False, type=int, default=0, help="The timeout period in between each credential check when password spraying (timeout is in seconds)");
+
+    #extops.add_argument("--randtimeout", required=False, type=int, default=0, help="The timeout period in between each credential check when password spraying (timeout is in seconds)"); #add this to try and avoid detection like ips, ids and siems?
+    #extops.add_argument("--ngml", required=False, type=int, default=0, help="Do not list out the group memberships when enumerating groups and member lists");
 
     return parser.parse_args();
 
@@ -487,6 +495,7 @@ def enum_users(args):
             print("[E] Couldn't find users using querydispinfo: NT_STATUS_INVALID_PARAMETER\n");
         else:
             for data in range(0, len(userdata), 2):
+                user_list.append(userdata[data].strip("[]"));
                 print("User: {}\{} ----- RID: {}".format(args.w, userdata[data].strip("[]"), int(userdata[(data + 1)].strip("[]"), 16)));
 
             print("");
@@ -665,6 +674,38 @@ def enum_services(args):
             print("[E] Could not get a list of services, because of invalid credentials\n");
         else:
             print("[E] Could not get a list of services\n");
+
+
+def pass_spray(args):
+    try:
+        if args.v:
+            print("[V] Attempting to obtain valid credentials via password spray (timeout set to {} seconds)".format(args.timeout));
+
+        for user in user_list:
+            output = subprocess.Popen(["rpcclient", "-W", args.w, "-U", "{}%{}".format(user, args.spray), "-c getusername;quit", args.t], stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
+
+            if output.find("Cannot connect to server") > -1 or output.find("Error was NT_STATUS_LOGON_FAILURE") > -1:
+                print("[-] Username: {}\tPassword: {}\tResult: invalid".format(user, args.spray));
+            elif output.find("Account Name") > -1 or output.find("Authority Name") > -1:
+                print("[+] Username: {}\tPassword: {}\tResult: **VALID**".format(user, args.spray));
+            else:
+                print(output);
+
+            time.sleep(args.timeout);
+
+        print("");
+    except subprocess.CalledProcessError as cpe:
+        print(cpe.output.decode("UTF-8"));
+
+
+# def brute(args):
+#     try:
+#         for user in user_list:
+#             for pass in args.brute:
+#                 output = subprocess.Popen(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c getusername;quit"], stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
+#     except subprocess.CalledProcessError as cpe:
+#         print(cpe.output.decode("UTF-8"));
+
 
 
 def main():
@@ -851,6 +892,20 @@ Known Usernames -----------> {}
         get_printer_info(carglist);
 
 
+    #Extended functions-------------------------------------------------------------------------------------------
+    if carglist.spray:
+        if len(user_list) > 0:
+            title = [["Starting password spray against {}".format(carglist.t, carglist.R).title()]];
+            header = terminaltables.AsciiTable(title);
+            print(header.table);
+
+            pass_spray(carglist);
+        elif len(user_list) <= 0:
+            print("[E]: The user list is not populated, which means no users were able to be found. Aborting password spraying procedures.\n");
+        else:
+            print("[E]: Unable to perform password spraying procedures\n");
+
+
     #Enum4LinuxPy complete----------------------------------------------------------------------------------------
     timeend = datetime.datetime.now();
     elapsedtime = (timeend-timestart);
@@ -861,4 +916,4 @@ if __name__ == '__main__':
     try:
         main();
     except KeyboardInterrupt as kbi:
-        print("\nEnum4Linux.py has been stopped\n");
+        print("\n!-------Enum4LinuxPy has been stopped-------!\n");
