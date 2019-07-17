@@ -182,7 +182,8 @@ def getArgs():
     addops.add_argument("-v", required=False, action="store_true", default=False, help="Verbose. Shows full commands being run (net, rpcclient, etc.)");
     addops.add_argument("-e", required=False, action="store_true", default=False, help="enumerate privileges");
     addops.add_argument("-y", required=False, action="store_true", default=False, help="attempt to enumerate Domain Controller names");
-    addops.add_argument("-q", required=False, action="store_true", default=False,help="attempt to enumerate domain information");
+    addops.add_argument("-z", required=False, action="store_true", default=False, help="enumerate running services on remote host using supplied credentials");
+    addops.add_argument("-q", required=False, action="store_true", default=False, help="attempt to enumerate domain information");
     addops.add_argument("-a", required=False, action="store_true", default=False, help="""
     Do all simple enumeration (-U -S -G -P -r -o -n -i).
     This option is enabled if you don't provide any other options.""");
@@ -637,6 +638,7 @@ def enum_privs(args):
     except subprocess.CalledProcessError as cpe:
         print(cpe.output.decode("UTF-8"));
 
+
 def get_printer_info(args):
     try:
         if args.v:
@@ -648,6 +650,21 @@ def get_printer_info(args):
     except subprocess.CalledProcessError as cpe:
         print(cpe.output.decode("UTF-8"));
 
+
+def enum_services(args):
+    try:
+        if args.v:
+            print("[V] Attempting to get a list of services with net service list\n");
+
+        output = subprocess.check_output(["net", "rpc", "service", "list", "-I", args.t, "-U", "{}\\{}%{}".format(args.w, args.u, args.p)]).decode("UTF-8");
+
+        if output is not None:
+            print(output);
+    except subprocess.CalledProcessError as cpe:
+        if str(cpe.output.decode("UTF-8")).find("NT_STATUS_LOGON_FAILURE"):
+            print("[E] Could not get a list of services, because of invalid credentials\n");
+        else:
+            print("[E] Could not get a list of services\n");
 
 
 def main():
@@ -804,6 +821,13 @@ Known Usernames -----------> {}
 
         enum_privs(carglist);
 
+    if carglist.z:
+        title = [["Service enumeration on {}".format(carglist.t).title()]];
+        header = terminaltables.AsciiTable(title);
+        print(header.table);
+
+        enum_services(carglist);
+
     #Misc functions-----------------------------------------------------------------------------------------------
     if carglist.r:
         title = [["Users on {} via RID cycling (RIDS: {})".format(carglist.t, carglist.R).title()]];
@@ -827,7 +851,7 @@ Known Usernames -----------> {}
         get_printer_info(carglist);
 
 
-    #Enum4LinuxPy complete
+    #Enum4LinuxPy complete----------------------------------------------------------------------------------------
     timeend = datetime.datetime.now();
     elapsedtime = (timeend-timestart);
     print("[!] Enum4LinuxPy completed at {} - Duration of time ran for {}".format(timeend, elapsedtime));
