@@ -215,7 +215,15 @@ def getArgs():
     passpray.add_argument("--timeout", required=False, type=int, default=0, help="The timeout period in between each credential check when password spraying (timeout is in seconds)");
     # passpray.add_argument("--randtimeout", required=False, type=int, default=0, help="The timeout period in between each credential check when password spraying (timeout is in seconds)"); #add this to try and avoid detection from ips, ids and siems?
 
-    pypseshell = parser.add_argument_group("Options Remote Code Execution via PyPsexec:\n[*] https://pypi.org/project/pypsexec/\n[*] https://www.bloggingforlogging.com/2018/03/12/introducing-psexec-for-python\n");
+    pypseshell = parser.add_argument_group("""Options For Remote Code Execution via PyPsexec:
+    [1] https://pypi.org/project/pypsexec/
+    [2] https://www.bloggingforlogging.com/2018/03/12/introducing-psexec-for-python
+    
+    NOTE THAT THE FOLLOWING REQUIREMENTS NEED TO BE FULFILLED:
+    [+] Port 445 and SMB need to be enabled on the target
+    [+] The ADMIN$ needs to be enabled on the target (this is enabled by default)
+    [+] The credentials of the account being used must be a member of the local Administrators group on the target (net localgroup Administrators)
+    [+] The credentials fo the account being used must have a fully elevated (administrative) token for remote logon (see link 2 above for more information)\n\n""");
     pypseshell.add_argument("--shell", required=False, action="store_true", default=False, help="Start a shell with the supplied credentials on the target machine with pypsexec (most likely will need privileged credentials)");
     pypseshell.add_argument("--system", required=False, action="store_true", default=False, help="Start process as nt authority\\system local account");
     pypseshell.add_argument("--executable", required=False, type=str, default="powershell.exe", help="executable to use to start process (usually this will be cmd.exe or powershell.exe) (default: 'powershell.exe')");
