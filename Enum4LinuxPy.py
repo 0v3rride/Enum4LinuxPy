@@ -165,14 +165,15 @@ def getArgs():
     std.add_argument("-G", required=False, action="store_true", default=False, help="get group and member list");
     std.add_argument("-P", required=False, action="store_true", default=False, help="get password policy information");
     std.add_argument("-S", required=False, action="store_true", default=False, help="get sharelist");
-    std.add_argument("-M", required=False, action="store_true", default=False, help="get machine list");
     std.add_argument("-U", required=False, action="store_true", default=False, help="get userlist");
     std.add_argument("-j", required=False, action="store_true", default=False, help="junk creds (sometimes null session enumeration will not work with null creds)");
 
-    # parser.add_argument("-L", required=False, action="store_true", default=False, help="get group and member list");
-    # parser.add_argument("-N", required=False, action="store_true", default=False, help="get sharelist");
-    # parser.add_argument("-D", required=False, action="store_true", default=False, help="get machine list");
-    # parser.add_argument("-F", required=False, action="store_true", default=False, help="get group and member list");
+    # Crap that wasn't implemented according to comments in enum4linux.pl (will work on this later)
+    # std.add_argument("-L", required=False, action="store_true", default=False, help="enum lsa policy);
+    # std.add_argument("-N", required=False, action="store_true", default=False, help="enum names);
+    # std.add_argument("-M", required=False, action="store_true", default=False, help="get machine list");
+    # std.add_argument("-F", required=False, action="store_true", default=False, help=");
+    # std.add_argument("-D", required=False, action="store_true", default=False, help=");
 
     addops = parser.add_argument_group("Additional options");
     addops.add_argument("-r", required=False, action="store_true", default=False, help="enumerate users via RID cycling");
@@ -183,7 +184,7 @@ def getArgs():
     addops.add_argument("-v", required=False, action="store_true", default=False, help="Verbose. Shows full commands being run (net, rpcclient, etc.)");
     addops.add_argument("-e", required=False, action="store_true", default=False, help="enumerate privileges");
     addops.add_argument("-y", required=False, action="store_true", default=False, help="attempt to enumerate Domain Controller names");
-    addops.add_argument("-z", required=False, action="store_true", default=False, help="enumerate running services on remote host using supplied credentials");
+    addops.add_argument("-z", required=False, action="store_true", default=False, help="enumerate running services on remote host using supplied credentials (most likely will need privileged credentials)");
     addops.add_argument("-q", required=False, action="store_true", default=False, help="attempt to enumerate domain information");
     addops.add_argument("-a", required=False, action="store_true", default=False, help="""
     Do all simple enumeration (-U -S -G -P -r -o -n -i).
@@ -201,6 +202,7 @@ def getArgs():
     extops = parser.add_argument_group("Extended functionality");
     extops.add_argument("--spray", required=False, type=str, default=None, help="Perform password spray using rpcclient (value should be password to spray, a user list is built when enumerating them if possible)");
     extops.add_argument("--timeout", required=False, type=int, default=0, help="The timeout period in between each credential check when password spraying (timeout is in seconds)");
+    extops.add_argument("--shell", required=False, action="store_true", default=False, help="Start a shell with the supplied credentials on the target machine with pypsexec");
 
     #extops.add_argument("--randtimeout", required=False, type=int, default=0, help="The timeout period in between each credential check when password spraying (timeout is in seconds)"); #add this to try and avoid detection like ips, ids and siems?
     #extops.add_argument("--ngml", required=False, type=int, default=0, help="Do not list out the group memberships when enumerating groups and member lists");
@@ -539,7 +541,7 @@ def enum_shares(args):
             Mapping: DENIED
             Listing: N/A\n
                 """.format(share));
-            elif re.search("\n\s+\.\.\s+D.*\d{4}\n", map_response, re.I):
+            elif re.search("\n\s+\.\.\s+D.*\d{4}\n", map_response, re.I) or re.search("blocks of size|blocks available", map_response, re.I):
                 print("""\t[+] Share: {}
             Mapping: OK
             Listing: OK\n
@@ -667,8 +669,7 @@ def enum_services(args):
 
         output = subprocess.check_output(["net", "rpc", "service", "list", "-I", args.t, "-U", "{}\\{}%{}".format(args.w, args.u, args.p)]).decode("UTF-8");
 
-        if output is not None:
-            print(output);
+        print(output);
     except subprocess.CalledProcessError as cpe:
         if str(cpe.output.decode("UTF-8")).find("NT_STATUS_LOGON_FAILURE"):
             print("[E] Could not get a list of services, because of invalid credentials\n");
