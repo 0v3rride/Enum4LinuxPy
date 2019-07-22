@@ -236,7 +236,6 @@ def getArgs():
     pypseshell.add_argument("--system", required=False, action="store_true", default=False, help="Start process as nt authority\\system local account");
     pypseshell.add_argument("--executable", required=False, type=str, default="powershell.exe", help="executable to use to start process (usually this will be cmd.exe or powershell.exe) (default: 'powershell.exe')");
     pypseshell.add_argument("--interactive", required=False, action="store_true", default=False, help="use this when you need to run the remote process in interactive mode. Note that stdout will not be printed to terminal");
-    pypseshell.add_argument("--elevate", required=False, action="store_true", default=False, help="run remote process in elevated state");
 
     return parser.parse_args();
 
@@ -755,7 +754,7 @@ def shell_pypsexec(args):
                     if program.find("cmd") > -1:
                         ucmdargs = "/c {}".format(ucmdargs);
 
-                    stdout, stderr, rc = client.run_executable(executable=program, arguments=ucmdargs);
+                    stdout, stderr, rc = client.run_executable(executable=program, arguments=ucmdargs, use_system_account=args.system, interactive=args.interactive);
                     print(stdout.decode("UTF-8"));
                     print(stderr.decode("UTF-8"));
             else:
