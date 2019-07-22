@@ -236,7 +236,7 @@ def getArgs():
     pypseshell.add_argument("--system", required=False, action="store_true", default=False, help="Start process as nt authority\\system local account");
     pypseshell.add_argument("--executable", required=False, type=str, default="powershell.exe", help="executable to use to start process (usually this will be cmd.exe or powershell.exe) (default: 'powershell.exe')");
     pypseshell.add_argument("--interactive", required=False, action="store_true", default=False, help="use this when you need to run the remote process in interactive mode. Note that stdout will not be printed to terminal");
-    pypseshell.add_argument("--elevate", required=False, action="store_true", default=False, help="run remote process in elevated state");
+    pypseshell.add_argument("--encrypt", required=False, action="store_true", default=False, help="encrypt command calls to the remote target host");
 
     return parser.parse_args();
 
@@ -280,7 +280,10 @@ def get_dc_names(args):
 
         if output is not None:
             print(output);
+    except subprocess.CalledProcessError as cpe:
+        cprint("[E] Unable to get DC name and information\n", "red", attrs=["bold"]);
 
+    try:
         if args.v:
             cprint("[V] Attempting to get a domain controller name with getdcname\n", "yellow", attrs=["bold"]);
 
@@ -288,13 +291,16 @@ def get_dc_names(args):
 
         if output is not None:
             cprint("[+] UNC Path Found: {}\n".format(output), "green", attrs=["bold"]);
-            # listout = subprocess.Popen(["smbclient", "-L", r"//{}".format(output.strip("\\\n")), "-U", "{}".format("{}%{}".format(str(args.u), str(args.u)))], stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
-            #
-            # if listout is not None:
-            #     cprint(listout, "green", attrs=["bold"]);
+            listout = subprocess.Popen(["smbclient", "-L", r"{}".format((str(output).strip("\n\r\t\0"))), "-W", args.w, "-U", "{}%{}".format(args.u, args.p)], stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
+
+            if listout is not None:
+                cprint(listout, "green", attrs=["bold"]);
 
     except subprocess.CalledProcessError as cpe:
-        cprint("[E] Unable to get DC name and information\n", "red", attrs=["bold"]);
+        if str(cpe.output.decode("UTF-8")).find("WERR_NOT_SUPPORTED") > -1:
+            cprint("[E] The rpcclient command 'getdcname' only works against Domain Controllers\n", "red", attrs=["bold"]);
+        else:
+            cprint("[E] Unable to get DC name and information\n", "red", attrs=["bold"]);
 
 
 def get_nbtstat(target):
@@ -453,7 +459,7 @@ def enum_groups(args):
                 for data in range(0, len(groupdata), 2):
                     print("[+] Information for group '{}' (RID {}):".format(groupdata[data].strip("[]"), int(groupdata[(data+1)].strip("[]"), 16)));
 
-                    doutput = subprocess.check_output(["net", "rpc", "group", "members", groupdata[data].strip("[]"), "-I", args.t, "-U", "{}%{}".format(args.u, args.p)]).decode("UTF-8");
+                    doutput = subprocess.check_output(["net", "rpc", "group", "members", groupdata[data].strip("[]"), "-W", args.w, "-I", args.t, "-U", "{}%{}".format(args.u, args.p)]).decode("UTF-8");
 
                     if doutput:
                         print("Member List:\n{}".format(doutput));
@@ -738,7 +744,7 @@ def pass_spray(args):
 
 def shell_pypsexec(args):
     import pypsexec.client;
-    client = pypsexec.client.Client(server=args.t, username=args.u, password=args.p, encrypt=False);
+    client = pypsexec.client.Client(server=args.t, username=args.u, password=args.p, encrypt=args.encrypt);
 
     try:
         client.connect();
@@ -755,7 +761,7 @@ def shell_pypsexec(args):
                     if program.find("cmd") > -1:
                         ucmdargs = "/c {}".format(ucmdargs);
 
-                    stdout, stderr, rc = client.run_executable(executable=program, arguments=ucmdargs);
+                    stdout, stderr, rc = client.run_executable(executable=program, arguments=ucmdargs, use_system_account=args.system, interactive=args.interactive);
                     print(stdout.decode("UTF-8"));
                     print(stderr.decode("UTF-8"));
             else:
@@ -986,7 +992,7 @@ Known Usernames -----------> {}
     #Enum4LinuxPy complete----------------------------------------------------------------------------------------
     timeend = datetime.datetime.now();
     elapsedtime = (timeend-timestart);
-    cprint("[!] Enum4LinuxPy completed at {} - Duration of time ran for {}".format(timeend, elapsedtime), "magenta", attrs=["bold"]);
+    cprint("[!] Enum4LinuxPy completed at {} - Duration of time ran for {}\n".format(timeend, elapsedtime), "magenta", attrs=["bold"]);
 
 
 if __name__ == '__main__':
