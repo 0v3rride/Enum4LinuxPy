@@ -10,7 +10,7 @@ New flags added:
 * -e will enumerate any privileges one has
 * -z will enumerate any services running on the remote host (will most likely require privileged credentials)
 
-Options for password spraying and brute forcing have also been added. When performing a password spray, the list of users will be gathered when E4LPy enumerates domain users and local users on the remote target host. Simply provide a password you want to spray with the list of users gathered (--spray July2019!). When bruteforcing, a username of you choice should be specified with the --brute <user> flag along with the absolute path to a wordlist to use (--wordlist <path/to/wordlist.txt>). Also available are the --timeout <int seconds> and --randtimeout <int maxseconds>. If you specify 120, then E4LPy will choose a random integer anywhere between 0 and 120 and wait after each time it submits a username and password for authentication to the target. 
+Options for password spraying and brute forcing have also been added. When performing a password spray, the list of users will be gathered when E4LPy enumerates domain users and local users on the remote target host. Simply provide a password you want to spray with the list of users gathered (--spray July2019!). When bruteforcing, a username of your choice should be specified with the --brute <user> flag along with the absolute path to a wordlist to use (--wordlist <path/to/wordlist.txt>). Also available are --timeout <int seconds> and --randtimeout <int maxseconds>. For randtimeout, if you specify 120, then E4LPy will choose a random integer anywhere between 0 and 120 and wait after each time it submits a username and password for authentication to the target. 
   
 ## TODO
 N/A
