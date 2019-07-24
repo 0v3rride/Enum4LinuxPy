@@ -232,9 +232,9 @@ def getArgs():
     passops.add_argument("--spray", required=False, type=str, default=None,
                          help="Perform password spray using rpcclient (value should be password to spray, a user list is built when enumerating them if possible)");
     passops.add_argument("--timeout", required=False, type=int, default=None,
-                         help="The timeout period in between each credential check when password spraying (timeout is in seconds) (default: None)");
+                         help="The timeout period in between each credential check (timeout is in seconds) (default: None)");
     passops.add_argument("--randtimeout", required=False, type=int, default=None,
-                         help="The celling value for random timeout period in between each credential check when password spraying (timeout is in seconds starting at 0 tp <value given> (default: None))");
+                         help="The celling value for random timeout period in between each credential check (timeout is in seconds starting at 0 to <value given> (default: None))");
 
     return parser.parse_args();
 
