@@ -491,7 +491,7 @@ def enum_users(args):
         if args.v:
             cprint("[V] Attempting to get userlist with querydispinfo", "yellow", attrs=["bold"]);
 
-        output = subprocess.check_output(["rpcclient", "-W", args.w, "-c", "querydispinfo", "-U", "{}%{}".format(args.u, args.p), args.t]).decode("UTF-8");
+        output = subprocess.check_output(["rpcclient", "-W", args.w, "-c querydispinfo", "-U", "{}%{}".format(args.u, args.p), args.t]).decode("UTF-8");
 
         print(output);
 
