@@ -93,8 +93,6 @@ def setArgs(uargs):
         uargs.o = True;
         uargs.n = True;
         uargs.i = True;
-        uargs.brute = False;
-        uargs.spray = False;
     elif not uargs.U and not uargs.S and not uargs.G and not uargs.r and not uargs.p and not uargs.P and not uargs.o and not uargs.n and not uargs.i and not uargs.e:
         uargs.a = True;
     elif uargs.spray and uargs.brute:
@@ -436,7 +434,7 @@ def enum_groups(args):
                 for data in range(0, len(groupdata), 2):
                     print("[+] Information for group '{}' (RID {}):".format(groupdata[data].strip("[]"), int(groupdata[(data+1)].strip("[]"), 16)));
 
-                    doutput = subprocess.check_output(["net", "rpc", "group", "members", groupdata[data].strip("[]"), "-W", args.w, "-I", args.t, "-U", "{}%{}".format(args.u, args.p)]).decode("UTF-8");
+                    doutput = subprocess.Popen(["net", "rpc", "group", "members", groupdata[data].strip("[]"), "-W", args.w, "-I", args.t, "-U", "{}%{}".format(args.u, args.p)], stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
 
                     if doutput:
                         print("Member List:\n{}".format(doutput));
@@ -495,12 +493,7 @@ def enum_users(args):
 
         output = subprocess.check_output(["rpcclient", "-W", args.w, "-c querydispinfo", "-U", "{}%{}".format(args.u, args.p), args.t]).decode("UTF-8");
 
-        if output.find("NT_STATUS_ACCESS_DENIED") > -1:
-            cprint("[E] Couldn't find users using querydispinfo: NT_STATUS_ACCESS_DENIED\n", "red", attrs=["bold"]);
-        elif output.find("NT_STATUS_INVALID_PARAMETER") > -1:
-            cprint("[E] Couldn't find users using querydispinfo: NT_STATUS_INVALID_PARAMETER\n", "red", attrs=["bold"]);
-        else:
-            print(output);
+        print(output);
 
         print("\n");
 
@@ -522,7 +515,10 @@ def enum_users(args):
 
             print("");
     except subprocess.CalledProcessError as cpe:
-        cprint(cpe.output.decode("UTF-8"), "red", attrs=["bold"]);
+        if cpe.output.decode("UTF").find("NT_STATUS_ACCESS_DENIED") > -1:
+            cprint("[E] Couldn't find users using querydispinfo: NT_STATUS_ACCESS_DENIED\n", "red", attrs=["bold"]);
+        elif cpe.output.decode("UTF").find("NT_STATUS_INVALID_PARAMETER") > -1:
+            cprint("[E] Couldn't find users using querydispinfo: NT_STATUS_INVALID_PARAMETER\n", "red", attrs=["bold"]);
 
 
 def enum_shares(args):
@@ -567,7 +563,7 @@ def enum_shares(args):
             Listing: OK\n
                 """.format(share), "green", attrs=["bold"]);
             else:
-                print("\t[+] Can't understand response for {}: {}\n".format(share, map_response));
+                cprint("\t[+] Can't understand response for {}: {}\n".format(share, map_response), "red", attrs=["bold"]);
     except subprocess.CalledProcessError as cpe:
         cprint(cpe.output.decode("UTF-8"), "red", attrs=["bold"]);
 
