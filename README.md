@@ -6,7 +6,7 @@ The original Perl version has a number of outstanding issues that have been open
 
 ## Progress
 New flags added:
-* -y and -q both obtain domain information about the domain controller if E4lPy is targeting one. Output from -q is a less verbose than the -y option. The -y option will display basic information about the DC and the domain which includes the IP of the DC, the domain name, the DC site name and DC flags that tell you if the DC is a PDC, BDC, has DNS enabled, is a KDC, etc.
+* -y and -q both obtain domain information about the domain controller if E4lPy is targeting one. Output from -q is less verbose than the -y option. The -y option will display basic information about the DC and the domain which includes the IP of the DC, the domain name, the DC site name and DC flags that tell you if the DC is a PDC, BDC, has DNS enabled, is a KDC, etc.
 * -e will enumerate any privileges one has
 * -z will enumerate any services running on the remote host (will most likely require privileged credentials)
 
