@@ -10,11 +10,10 @@ import time;
 import random;
 from termcolor import cprint;
 
-#Global Vars
+# Global Vars
 dependent_programs = ["nmblookup", "net", "rpcclient", "smbclient"];
 optional_dependent_programs = ["polenum", "ldapsearch"];
 user_list = [];
-
 
 ###############################################################################
 # The following  mappings for nmblookup (nbtstat) status codes to human readable
@@ -40,50 +39,52 @@ user_list = [];
 #    along with this program; if not, write to the Free Softwar
 #    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA
 
-#TUPLE BASED DICTIONARY
+# TUPLE BASED DICTIONARY
 nbt_info = {
-("..__MSBROWSE__.", "01") : "Master Browser",
-("INet~Services", "1c") : "IIS",
-("IS~", "00") : "IIS",
-("", "00") : "Workstation Service",
-("", "01") : "Messenger Service",
-("", "03") : "Messenger Service",
-("", "06") : "RAS Server Service",
-("", "1f") : "NetDDE Service",
-("", "20") : "File Server Service",
-("", "21") : "RAS Client Service",
-("", "22") : "Microsoft Exchange Interchange(MSMail Connector)",
-("", "23") : "Microsoft Exchange Store",
-("", "24") : "Microsoft Exchange Directory",
-("", "30") : "Modem Sharing Server Service",
-("", "31") : "Modem Sharing Client Service",
-("", "43") : "SMS Clients Remote Control",
-("", "44") : "SMS Administrators Remote Control Tool",
-("", "45") : "SMS Clients Remote Chat",
-("", "46") : "SMS Clients Remote Transfer",
-("", "4C") : "DEC Pathworks TCPIP service on Windows NT",
-("", "52") : "DEC Pathworks TCPIP service on Windows NT",
-("", "87") : "Microsoft Exchange MTA",
-("", "6A") : "Microsoft Exchange IMC",
-("", "Be") : "Network Monitor Agent",
-("", "Bf") : "Network Monitor Application",
-("", "03") : "Messenger Service",
-("", "02") : "Domain/Workgroup Name",  #nbt stat code is really 00, but is 02 to prevent duplication; difference between this and workstation is that Domain/Workgroup Name will have <GROUP> on the same line, workstation will not
-("", "1b") : "Domain Master Browser",
-("", "1c") : "Domain Controllers",
-("", "1d") : "Master Browser",
-("", "1e") : "Browser Service Elections",
-("", "2b") : "Lotus Notes Server Service",
-("IRISMULTICAST", "2f") : "Lotus Notes",
-("IRISNAMESERVER", "33") : "Lotus Notes",
-('Forte_$ND800ZA', "20") : "DCA IrmaLan Gateway Server Service"
+    ("..__MSBROWSE__.", "01"): "Master Browser",
+    ("INet~Services", "1c"): "IIS",
+    ("IS~", "00"): "IIS",
+    ("", "00"): "Workstation Service",
+    ("", "01"): "Messenger Service",
+    ("", "03"): "Messenger Service",
+    ("", "06"): "RAS Server Service",
+    ("", "1f"): "NetDDE Service",
+    ("", "20"): "File Server Service",
+    ("", "21"): "RAS Client Service",
+    ("", "22"): "Microsoft Exchange Interchange(MSMail Connector)",
+    ("", "23"): "Microsoft Exchange Store",
+    ("", "24"): "Microsoft Exchange Directory",
+    ("", "30"): "Modem Sharing Server Service",
+    ("", "31"): "Modem Sharing Client Service",
+    ("", "43"): "SMS Clients Remote Control",
+    ("", "44"): "SMS Administrators Remote Control Tool",
+    ("", "45"): "SMS Clients Remote Chat",
+    ("", "46"): "SMS Clients Remote Transfer",
+    ("", "4C"): "DEC Pathworks TCPIP service on Windows NT",
+    ("", "52"): "DEC Pathworks TCPIP service on Windows NT",
+    ("", "87"): "Microsoft Exchange MTA",
+    ("", "6A"): "Microsoft Exchange IMC",
+    ("", "Be"): "Network Monitor Agent",
+    ("", "Bf"): "Network Monitor Application",
+    ("", "03"): "Messenger Service",
+    ("", "02"): "Domain/Workgroup Name",
+# nbt stat code is really 00, but is 02 to prevent duplication; difference between this and workstation is that Domain/Workgroup Name will have <GROUP> on the same line, workstation will not
+    ("", "1b"): "Domain Master Browser",
+    ("", "1c"): "Domain Controllers",
+    ("", "1d"): "Master Browser",
+    ("", "1e"): "Browser Service Elections",
+    ("", "2b"): "Lotus Notes Server Service",
+    ("IRISMULTICAST", "2f"): "Lotus Notes",
+    ("IRISNAMESERVER", "33"): "Lotus Notes",
+    ('Forte_$ND800ZA', "20"): "DCA IrmaLan Gateway Server Service"
 }
+
 
 ####################### end of nbtscan-derrived code ############################
 
 
 def setArgs(uargs):
-    #check arguments
+    # check arguments
     if uargs.a:
         uargs.U = True;
         uargs.S = True;
@@ -96,14 +97,15 @@ def setArgs(uargs):
     elif not uargs.U and not uargs.S and not uargs.G and not uargs.r and not uargs.p and not uargs.P and not uargs.o and not uargs.n and not uargs.i and not uargs.e:
         uargs.a = True;
     elif uargs.spray and uargs.brute:
-        cprint("[E]: You may only choose to brute force or spray passwords in a single instance", "red", attrs=["bold"]);
+        cprint("[E]: You may only choose to brute force or spray passwords in a single instance", "red",
+               attrs=["bold"]);
         exit(1);
     elif uargs.spray:
         uargs.U = True;
     else:
         uargs.a = False;
 
-    #check if null creds wanted
+    # check if null creds wanted
     if uargs.j:
         uargs.u = "Enum4Linux";
         uargs.p = "Py";
@@ -113,7 +115,9 @@ def setArgs(uargs):
 
 def checkDependentProgs(proglist, verbose):
     if sys.platform.lower() is "windows":
-        cprint("[E] Enum4LinuxPy is meant to be ran in an *unix type of environment. The reason for this is due to the fact that Enum4LinuxPy utilizes tools like smbclient and rpcclient, which are usually only found in *unix type environments.", "red", attrs=["bold"]);
+        cprint(
+            "[E] Enum4LinuxPy is meant to be ran in an *unix type of environment. The reason for this is due to the fact that Enum4LinuxPy utilizes tools like smbclient and rpcclient, which are usually only found in *unix type environments.",
+            "red", attrs=["bold"]);
         exit(1);
 
     for prog in proglist:
@@ -137,26 +141,26 @@ def checkOptProgs(proglist, verbose):
 
 
 def getArgs():
-    parser = argparse.ArgumentParser(description = """
+    parser = argparse.ArgumentParser(description="""
     Simple wrapper around the tools in the samba package to provide similar 
     functionality to enum.exe (formerly from www.bindview.com).  Some additional 
     features such as RID cycling have also been added for convenience.
     """,
-    usage="""python Enum4LinuxPy.py -t <target> <options>
+                                     usage="""python Enum4LinuxPy.py -t <target> <options>
     E.g:
     python Enum4LinuxPy.py -t 10.10.x.x -a
     python Enum4LinuxPy.py -t 10.20.x.x -l
     python Enum4LinuxPy.py -t 192.168.x.x -R 1000-2000 500-600 -k administrator wsusadmin exchadmin root guest admin
-    
+
     NOTE that -R or -k take a list as arguments and only require a space separation delimitation)""",
-    prog="Enum4LinuxPy https://github.com/0v3rride (Ryan Gore)",
-    epilog="""
+                                     prog="Enum4LinuxPy https://github.com/0v3rride (Ryan Gore)",
+                                     epilog="""
     RID cycling should extract a list of users from Windows (or Samba) hosts       
     which have RestrictAnonymous set to 1 (Windows NT and 2000), or "Network    
     access: Allow anonymous SID/Name translation" enabled (XP, 2003).         
-                                                                              
+
     NB: Samba servers often seem to have RIDs in the range 3000-3050.         
-                                                                                        
+
     Dependancy info: You will need to have the samba package installed as this  
     script is basically just a wrapper around rpcclient, net, nmblookup and     
     smbclient.  Polenum from http://labs.portcullis.co.uk/application/polenum/
@@ -167,12 +171,14 @@ def getArgs():
     std.add_argument("-t", required=True, type=str, default=None, help="specifiy the remote host");
     std.add_argument("-u", required=False, type=str, default="", help="specifiy username to use (default 'root')");
     std.add_argument("-p", required=False, type=str, default="", help="specifiy password to use (default 'root')");
-    std.add_argument("-d", required=False, action="store_true", default=False, help="be detailed, applies to -U and -S");
+    std.add_argument("-d", required=False, action="store_true", default=False,
+                     help="be detailed, applies to -U and -S");
     std.add_argument("-G", required=False, action="store_true", default=False, help="get group and member list");
     std.add_argument("-P", required=False, action="store_true", default=False, help="get password policy information");
     std.add_argument("-S", required=False, action="store_true", default=False, help="get sharelist");
     std.add_argument("-U", required=False, action="store_true", default=False, help="get userlist");
-    std.add_argument("-j", required=False, action="store_true", default=False, help="junk creds (sometimes null session enumeration will not work with null creds)");
+    std.add_argument("-j", required=False, action="store_true", default=False,
+                     help="junk creds (sometimes null session enumeration will not work with null creds)");
 
     # Crap that wasn't implemented according to comments in enum4linux.pl (will work on this later)
     # std.add_argument("-L", required=False, action="store_true", default=False, help="enum lsa policy);
@@ -182,36 +188,53 @@ def getArgs():
     # std.add_argument("-D", required=False, action="store_true", default=False, help=");
 
     addops = parser.add_argument_group("Additional options");
-    addops.add_argument("-r", required=False, action="store_true", default=False, help="enumerate users via RID cycling");
+    addops.add_argument("-r", required=False, action="store_true", default=False,
+                        help="enumerate users via RID cycling");
     addops.add_argument("-i", required=False, action="store_true", default=False, help="Get printer information");
     addops.add_argument("-o", required=False, action="store_true", default=False, help="Get OS information");
-    addops.add_argument("-n", required=False, action="store_true", default=False, help="Do an nmblookup (similar to nbtstat)");
-    addops.add_argument("-l", required=False, action="store_true", default=False, help="Get some (limited) info via LDAP 389/TCP (for DCs only)");
-    addops.add_argument("-v", required=False, action="store_true", default=False, help="Verbose. Shows full commands being run (net, rpcclient, etc.)");
+    addops.add_argument("-n", required=False, action="store_true", default=False,
+                        help="Do an nmblookup (similar to nbtstat)");
+    addops.add_argument("-l", required=False, action="store_true", default=False,
+                        help="Get some (limited) info via LDAP 389/TCP (for DCs only)");
+    addops.add_argument("-v", required=False, action="store_true", default=False,
+                        help="Verbose. Shows full commands being run (net, rpcclient, etc.)");
     addops.add_argument("-e", required=False, action="store_true", default=False, help="enumerate privileges");
-    addops.add_argument("-y", required=False, action="store_true", default=False, help="attempt to enumerate Domain Controller names");
-    addops.add_argument("-z", required=False, action="store_true", default=False, help="enumerate running services on remote host using supplied credentials (most likely will need privileged credentials)");
-    addops.add_argument("-q", required=False, action="store_true", default=False, help="attempt to enumerate domain information");
-    addops.add_argument("--nomemberlist", required=False, action="store_true", default=False, help="Do not list out the group memberships when enumerating groups and member lists");
+    addops.add_argument("-y", required=False, action="store_true", default=False,
+                        help="attempt to enumerate Domain Controller names");
+    addops.add_argument("-z", required=False, action="store_true", default=False,
+                        help="enumerate running services on remote host using supplied credentials (most likely will need privileged credentials)");
+    addops.add_argument("-q", required=False, action="store_true", default=False,
+                        help="attempt to enumerate domain information");
+    addops.add_argument("--nomemberlist", required=False, action="store_true", default=False,
+                        help="Do not list out the group memberships when enumerating groups and member lists");
     addops.add_argument("-a", required=False, action="store_true", default=False, help="""
     Do all simple enumeration (-U -S -G -P -r -o -n -i).
     This option is enabled if you don't provide any other options.""");
     addops.add_argument("-K", required=False, type=int, default=10, help="""
     Keep searching RIDs until n number of consecutive RIDs don't correspond to a username. 
     Implies RID range ends at highest_rid. Useful against DCs (default 10).""");
-    addops.add_argument("-k", required=False, type=str, nargs='+', default=["administrator", "guest", "krbtgt", "domain admins", "root", "bin", "none"], help="""
+    addops.add_argument("-k", required=False, type=str, nargs='+',
+                        default=["administrator", "guest", "krbtgt", "domain admins", "root", "bin", "none"], help="""
     User(s) that exists on remote system (default: ["administrator", "guest", "krbtgt", "domain admins", "root", "bin", "none"].
     Used to get sid with "lookupsid known_username" Use spaces to try several users: -k admin user1 user2)""")
-    addops.add_argument("-w", required=False, type=str, default=None, help="Specify workgroup manually (usually found automatically)");
-    addops.add_argument("-s", required=False, type=str, default=None, help="path to list for brute force guessing share names");
-    addops.add_argument("-R", required=False, type=str, nargs='+', default=["500-550", "1000-1050"], help="RID ranges to enumerate (default: rid_range, implies -r) Use spaces to try several rid ranges: -R 0-100 1000-2500 500-600)");
+    addops.add_argument("-w", required=False, type=str, default=None,
+                        help="Specify workgroup manually (usually found automatically)");
+    addops.add_argument("-s", required=False, type=str, default=None,
+                        help="path to list for brute force guessing share names");
+    addops.add_argument("-R", required=False, type=str, nargs='+', default=["500-550", "1000-1050"],
+                        help="RID ranges to enumerate (default: rid_range, implies -r) Use spaces to try several rid ranges: -R 0-100 1000-2500 500-600)");
 
     passops = parser.add_argument_group("Password spraying and brute forcing options");
-    passops.add_argument("--brute", required=False, type=str, default=None, help="Perform brute forcing using rpcclient (value should be username)");
-    passops.add_argument("--wordlist", required=False, type=str, default=None, help="Wordlist to use when brute forcing (value should be absolute path to wordlist)");
-    passops.add_argument("--spray", required=False, type=str, default=None, help="Perform password spray using rpcclient (value should be password to spray, a user list is built when enumerating them if possible)");
-    passops.add_argument("--timeout", required=False, type=int, default=None, help="The timeout period in between each credential check when password spraying (timeout is in seconds) (default: None)");
-    passops.add_argument("--randtimeout", required=False, type=int, default=None, help="The celling value for random timeout period in between each credential check when password spraying (timeout is in seconds starting at 0 tp <value given> (default: None))");
+    passops.add_argument("--brute", required=False, type=str, default=None,
+                         help="Perform brute forcing using rpcclient (value should be username)");
+    passops.add_argument("--wordlist", required=False, type=str, default=None,
+                         help="Wordlist to use when brute forcing (value should be absolute path to wordlist)");
+    passops.add_argument("--spray", required=False, type=str, default=None,
+                         help="Perform password spray using rpcclient (value should be password to spray, a user list is built when enumerating them if possible)");
+    passops.add_argument("--timeout", required=False, type=int, default=None,
+                         help="The timeout period in between each credential check when password spraying (timeout is in seconds) (default: None)");
+    passops.add_argument("--randtimeout", required=False, type=int, default=None,
+                         help="The celling value for random timeout period in between each credential check when password spraying (timeout is in seconds starting at 0 tp <value given> (default: None))");
 
     return parser.parse_args();
 
@@ -238,7 +261,9 @@ def get_domain_info(args):
         if args.v:
             cprint("[V] Attempting to get domain information with querydominfo\n", "yellow", attrs=["bold"]);
 
-        output = subprocess.check_output(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c", "querydominfo"]).decode("UTF-8");
+        output = subprocess.check_output(
+            ["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c", "querydominfo"]).decode(
+            "UTF-8");
 
         if output is not None:
             print(output);
@@ -249,9 +274,11 @@ def get_domain_info(args):
 def get_dc_names(args):
     try:
         if args.v:
-            cprint("[V] Attempting to get domain controller information with dsr_getdcname\n", "yellow", attrs=["bold"]);
+            cprint("[V] Attempting to get domain controller information with dsr_getdcname\n", "yellow",
+                   attrs=["bold"]);
 
-        output = subprocess.check_output(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c", "dsr_getdcname {}".format(args.w)]).decode("UTF-8");
+        output = subprocess.check_output(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c",
+                                          "dsr_getdcname {}".format(args.w)]).decode("UTF-8");
 
         if output is not None:
             print(output);
@@ -262,18 +289,22 @@ def get_dc_names(args):
         if args.v:
             cprint("[V] Attempting to get a domain controller name with getdcname\n", "yellow", attrs=["bold"]);
 
-        output = subprocess.check_output(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c", "getdcname {}".format(str(args.w).split('.')[0])]).decode("UTF-8");
+        output = subprocess.check_output(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c",
+                                          "getdcname {}".format(str(args.w).split('.')[0])]).decode("UTF-8");
 
         if output is not None:
             cprint("[+] UNC Path Found: {}\n".format(output), "green", attrs=["bold"]);
-            listout = subprocess.Popen(["smbclient", "-L", r"{}".format((str(output).strip("\n\r\t\0"))), "-W", args.w, "-U", "{}%{}".format(args.u, args.p)], stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
+            listout = subprocess.Popen(
+                ["smbclient", "-L", r"{}".format((str(output).strip("\n\r\t\0"))), "-W", args.w, "-U",
+                 "{}%{}".format(args.u, args.p)], stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
 
             if listout is not None:
                 cprint(listout, "green", attrs=["bold"]);
 
     except subprocess.CalledProcessError as cpe:
         if str(cpe.output.decode("UTF-8")).find("WERR_NOT_SUPPORTED") > -1:
-            cprint("[E] The rpcclient command 'getdcname' only works against Domain Controllers\n", "red", attrs=["bold"]);
+            cprint("[E] The rpcclient command 'getdcname' only works against Domain Controllers\n", "red",
+                   attrs=["bold"]);
         else:
             cprint("[E] Unable to get DC name and information\n", "red", attrs=["bold"]);
 
@@ -281,7 +312,7 @@ def get_dc_names(args):
 def get_nbtstat(target):
     try:
         output = subprocess.check_output(["nmblookup", "-A", target]).decode("UTF-8");
-        mac = output.splitlines()[len(output.splitlines())-2];
+        mac = output.splitlines()[len(output.splitlines()) - 2];
         print("{}\n{}\n\n{}\n".format(output.splitlines()[0], nbt_to_human(output), mac));
     except subprocess.CalledProcessError as cpe:
         cprint(cpe.output.decode("UTF-8"), "red", attrs=["bold"]);
@@ -297,14 +328,17 @@ def nbt_to_human(output):
         if counter < len(servicedata):
             servicename = servicedata[counter].strip("\t");
 
-            if re.search("(..__MSBROWSE__.|INet~Services|IS~|IRISMULTICAST|IRISNAMESERVER|Forte_\$ND800ZA)", servicename, re.I):
-                stringbuilder.append("{}\t{}".format(line, nbt_info[servicename, servicedata[counter+1].strip("<>")]));
+            if re.search("(..__MSBROWSE__.|INet~Services|IS~|IRISMULTICAST|IRISNAMESERVER|Forte_\$ND800ZA)",
+                         servicename, re.I):
+                stringbuilder.append(
+                    "{}\t{}".format(line, nbt_info[servicename, servicedata[counter + 1].strip("<>")]));
                 counter = (counter + 2);
             elif re.search("<GROUP>", line, re.I) and re.search("<00>", line, re.I):
                 stringbuilder.append("{}\t{}".format(line, nbt_info["", "02"]));
                 counter = (counter + 2);
-            elif not re.search("(..__MSBROWSE__.|INet~Services|IS~|IRISMULTICAST|IRISNAMESERVER|Forte_\$ND800ZA)", servicename, re.I) and re.search(servicedata[counter+1], line, re.I):
-                stringbuilder.append("{}\t{}".format(line, nbt_info["", servicedata[counter+1].strip("<>")]));
+            elif not re.search("(..__MSBROWSE__.|INet~Services|IS~|IRISMULTICAST|IRISNAMESERVER|Forte_\$ND800ZA)",
+                               servicename, re.I) and re.search(servicedata[counter + 1], line, re.I):
+                stringbuilder.append("{}\t{}".format(line, nbt_info["", servicedata[counter + 1].strip("<>")]));
                 counter = (counter + 2);
 
     return "\n".join(stringbuilder);
@@ -314,15 +348,22 @@ def make_session(args):
     try:
         if args.v:
             cprint("[V] Attempting to make null session", "yellow", attrs=["bold"]);
-        output = subprocess.check_output(["smbclient", "-W", args.w, r"//{}/ipc$".format(args.t), "-U", "{}%{}".format(args.u, args.p), "-c", "help"]).decode("UTF-8");
+        output = subprocess.check_output(
+            ["smbclient", "-W", args.w, r"//{}/ipc$".format(args.t), "-U", "{}%{}".format(args.u, args.p), "-c",
+             "help"]).decode("UTF-8");
 
         if output.find("session setup failed") > -1:
-            cprint("[E] Server doesn't allow session using username '{}', password '{}'.  Aborting remainder of tests.\n".format(args.u, args.p), "red", attrs=["bold"]);
+            cprint(
+                "[E] Server doesn't allow session using username '{}', password '{}'.  Aborting remainder of tests.\n".format(
+                    args.u, args.p), "red", attrs=["bold"]);
             exit(1);
         else:
-            cprint("[+] Server {} allows sessions using username '{}', password '{}'\n".format(args.t, args.u, args.p), "green", attrs=["bold"]);
+            cprint("[+] Server {} allows sessions using username '{}', password '{}'\n".format(args.t, args.u, args.p),
+                   "green", attrs=["bold"]);
     except subprocess.CalledProcessError as cpe:
-        cprint("[E] Server doesn't allow session using username '{}', password '{}'.  Aborting remainder of tests.\n".format(args.u, args.p), "red", attrs=["bold"]);
+        cprint(
+            "[E] Server doesn't allow session using username '{}', password '{}'.  Aborting remainder of tests.\n".format(
+                args.u, args.p), "red", attrs=["bold"]);
         exit(1);
 
 
@@ -331,17 +372,20 @@ def get_ldapinfo(args):
         if args.v:
             cprint("[V] Attempting to get long domain name", "yellow", attrs=["bold"]);
 
-        output = subprocess.check_output(["ldapsearch", "-x", "-h", args.t, "-p", "389", "-s", "base", "namingContexts"]).decode("UTF-8");
+        output = subprocess.check_output(
+            ["ldapsearch", "-x", "-h", args.t, "-p", "389", "-s", "base", "namingContexts"]).decode("UTF-8");
 
         if output.find("ldap_sasl_bind") > -1:
             cprint("[E] Connection error\n", "red", attrs=["bold"]);
         else:
             print(output);
 
-        #PARSE LDAP STRING
+        # PARSE LDAP STRING
 
     except subprocess.CalledProcessError as cpe:
-        cprint("[E] Dependent program ldapsearch not present. Skipping this check. Install ldapsearch to fix this issue\n".format(args.u, args.p), "red", attrs=["bold"]);
+        cprint(
+            "[E] Dependent program ldapsearch not present. Skipping this check. Install ldapsearch to fix this issue\n".format(
+                args.u, args.p), "red", attrs=["bold"]);
 
 
 def get_domain_sid(args):
@@ -349,15 +393,17 @@ def get_domain_sid(args):
         if args.v:
             cprint("[V] Attempting to get domain SID", "yellow", attrs=["bold"]);
 
-        output = subprocess.check_output(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c", "'lsaquery'"]).decode("UTF-8");
+        output = subprocess.check_output(
+            ["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c", "'lsaquery'"]).decode(
+            "UTF-8");
 
-        if(output.find("Domain Sid: S-0-0") > -1 or output.find("Domain Sid: (NULL SID)") > -1):
+        if (output.find("Domain Sid: S-0-0") > -1 or output.find("Domain Sid: (NULL SID)") > -1):
             print("[+] Host is part of a workgroup (not a domain)\n");
-        elif(re.search("Domain Sid: S-\d+-\d+-\d+-\d+-\d+-\d+", output, re.I)):
+        elif (re.search("Domain Sid: S-\d+-\d+-\d+-\d+-\d+-\d+", output, re.I)):
             print("[+] Host is part of a domain (not a workgroup)\n");
             print("[+] {}".format(output));
 
-            if(args.w is None or args.w is "" or args.w is " "):
+            if (args.w is None or args.w is "" or args.w is " "):
                 for line in output.splitlines():
                     if line.find("Domain Name:") > -1:
                         args.w = line.split(": ")[1];
@@ -371,11 +417,18 @@ def get_domain_sid(args):
 
 def get_os_info(args):
     try:
-        #smbclient
+        # smbclient
         if args.v:
-            cprint("[V] Attempting to get OS info with command: smbclient -W {} //{}/ipc\$ -U {}%{} -c 'q'".format(args.w, args.t, args.u, args.p), "yellow", attrs=["bold"]);
+            cprint(
+                "[V] Attempting to get OS info with command: smbclient -W {} //{}/ipc\$ -U {}%{} -c 'q'".format(args.w,
+                                                                                                                args.t,
+                                                                                                                args.u,
+                                                                                                                args.p),
+                "yellow", attrs=["bold"]);
 
-        output = subprocess.check_output(["smbclient", "-W", args.w, r"//{}/ipc$".format(args.t), "-U", "{}%{}".format(args.u, args.p), "-c", "q"]).decode("UTF-8");
+        output = subprocess.check_output(
+            ["smbclient", "-W", args.w, r"//{}/ipc$".format(args.t), "-U", "{}%{}".format(args.u, args.p), "-c",
+             "q"]).decode("UTF-8");
 
         if re.search("(Domain=[^\n]+)", output, re.I):
             print("[+] OS info for {} from smbclient: {}\n".format(args.t, output));
@@ -383,13 +436,19 @@ def get_os_info(args):
         cprint("SMBCLIENT Error: {}".format(cpe.output.decode("UTF-8")), "red", attrs=["bold"]);
 
     try:
-        #rpcclient
+        # rpcclient
         if args.v:
-            cprint("[V] Attempting to get OS info with command: rpcclient -W {} -U {}%{} -c srvinfo {}".format(args.w, args.u, args.p, args.t), "yellow", attrs=["bold"]);
+            cprint("[V] Attempting to get OS info with command: rpcclient -W {} -U {}%{} -c srvinfo {}".format(args.w,
+                                                                                                               args.u,
+                                                                                                               args.p,
+                                                                                                               args.t),
+                   "yellow", attrs=["bold"]);
 
-        output = subprocess.check_output(["rpcclient", "-W", args.w, "-U", r"{}%{}".format(args.u, args.p), "-c", "srvinfo", args.t]).decode("UTF-8");
+        output = subprocess.check_output(
+            ["rpcclient", "-W", args.w, "-U", r"{}%{}".format(args.u, args.p), "-c", "srvinfo", args.t]).decode(
+            "UTF-8");
 
-        if(output.find("error: NT_STATUS_ACCESS_DENIED") > -1):
+        if (output.find("error: NT_STATUS_ACCESS_DENIED") > -1):
             cprint("[E] Can't get OS info with srvinfo: NT_STATUS_ACCESS_DENIED\n", "red", attrs=["bold"]);
         else:
             print("[+] Got OS info for {} from srvinfo: {}\n".format(args.t, output));
@@ -403,10 +462,12 @@ def enum_groups(args):
 
         for group in groups:
 
-            #GET LIST OF GROUPS
-            output = subprocess.check_output(["rpcclient", "-W", args.w, "-U", r"{}%{}".format(args.u, args.p), args.t, "-c", "enumalsgroups {}".format(group)]).decode("UTF-8");
+            # GET LIST OF GROUPS
+            output = subprocess.check_output(
+                ["rpcclient", "-W", args.w, "-U", r"{}%{}".format(args.u, args.p), args.t, "-c",
+                 "enumalsgroups {}".format(group)]).decode("UTF-8");
 
-            if(group is "domain"):
+            if (group is "domain"):
                 if args.v:
                     cprint("[V] Getting local groups with enumalsgroups\n", "yellow", attrs=["bold"]);
 
@@ -418,23 +479,27 @@ def enum_groups(args):
                 print("[+] Getting {} groups\n".format(group));
 
             if (output.find("error: NT_STATUS_ACCESS_DENIED") > -1):
-                if(group is "domain"):
+                if (group is "domain"):
                     cprint("[E] Can't get local groups: NT_STATUS_ACCESS_DENIED\n", "red", attrs=["bold"]);
                 else:
                     cprint("[E] Can't get {} groups: NT_STATUS_ACCESS_DENIED\n".format(group), "red", attrs=["bold"]);
             else:
-                if(re.search("group:", output, re.I)):
+                if (re.search("group:", output, re.I)):
                     print(output);
 
-            #GET GROUP NAME, MEMBERS & RID
+            # GET GROUP NAME, MEMBERS & RID
 
             if not args.nomemberlist:
                 groupdata = re.findall(r"(\[[\w\s\-\_\{\}\.\$]+\])", output, re.I);
 
                 for data in range(0, len(groupdata), 2):
-                    print("[+] Information for group '{}' (RID {}):".format(groupdata[data].strip("[]"), int(groupdata[(data+1)].strip("[]"), 16)));
+                    print("[+] Information for group '{}' (RID {}):".format(groupdata[data].strip("[]"),
+                                                                            int(groupdata[(data + 1)].strip("[]"),
+                                                                                16)));
 
-                    doutput = subprocess.Popen(["net", "rpc", "group", "members", groupdata[data].strip("[]"), "-W", args.w, "-I", args.t, "-U", "{}%{}".format(args.u, args.p)], stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
+                    doutput = subprocess.Popen(
+                        ["net", "rpc", "group", "members", groupdata[data].strip("[]"), "-W", args.w, "-I", args.t,
+                         "-U", "{}%{}".format(args.u, args.p)], stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
 
                     if doutput:
                         print("Member List:\n{}".format(doutput));
@@ -442,7 +507,7 @@ def enum_groups(args):
                         cprint("\tIt appears that this group has no members\n", "yellow", attrs=["bold"]);
 
                     if args.d:
-                        get_group_details_from_rid(int(groupdata[(data+1)].strip("[]"), 16), args);
+                        get_group_details_from_rid(int(groupdata[(data + 1)].strip("[]"), 16), args);
 
                 print("\n");
     except subprocess.CalledProcessError as cpe:
@@ -454,7 +519,9 @@ def get_group_details_from_rid(rid, args):
         if args.v:
             cprint("[V] Attempting to get detailed group info", "yellow", attrs=["bold"]);
 
-        output = subprocess.check_output(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), "-c", "querygroup {}".format(str(rid)), args.t]).decode("UTF-8");
+        output = subprocess.check_output(
+            ["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), "-c", "querygroup {}".format(str(rid)),
+             args.t]).decode("UTF-8");
 
         if output:
             print("{}\n".format(output));
@@ -471,10 +538,10 @@ def enum_password_policy(args):
         if args.v:
             cprint("[V] Attempting to get Password Policy info", "yellow", attrs=["bold"]);
 
-        if(output):
-            if(output.find("Account Lockout Threshold") > -1):
+        if (output):
+            if (output.find("Account Lockout Threshold") > -1):
                 print(output);
-            elif(output.find("Error Getting Password Policy: Connect error") > -1):
+            elif (output.find("Error Getting Password Policy: Connect error") > -1):
                 cprint("[E] Can't connect to host with supplied credentials.\n", "red", attrs=["bold"]);
             else:
                 cprint("[E] Unexpected error from polenum.py:\n", "red", attrs=["bold"]);
@@ -491,14 +558,18 @@ def enum_users(args):
         if args.v:
             cprint("[V] Attempting to get userlist with querydispinfo", "yellow", attrs=["bold"]);
 
-        output = subprocess.check_output(["rpcclient", "-W", args.w, "-c querydispinfo", "-U", "{}%{}".format(args.u, args.p), args.t]).decode("UTF-8");
+        output = subprocess.check_output(
+            ["rpcclient", "-W", args.w, "-c querydispinfo", "-U", "{}%{}".format(args.u, args.p), args.t]).decode(
+            "UTF-8");
 
         print(output);
 
         print("\n");
 
-        #GET USER RIDS
-        userenumdata = subprocess.check_output(["rpcclient", "-W", args.w, "-c enumdomusers", "-U", "{}%{}".format(args.u, args.p), args.t]).decode("UTF-8");
+        # GET USER RIDS
+        userenumdata = subprocess.check_output(
+            ["rpcclient", "-W", args.w, "-c enumdomusers", "-U", "{}%{}".format(args.u, args.p), args.t]).decode(
+            "UTF-8");
         userdata = re.findall(r"(\[[\w\s\-\_\{\}\.\$]+\])", userenumdata, re.I);
 
         if args.v:
@@ -511,7 +582,8 @@ def enum_users(args):
         else:
             for data in range(0, len(userdata), 2):
                 user_list.append(userdata[data].strip("[]"));
-                print("User: {}\{} ----- RID: {}".format(args.w, userdata[data].strip("[]"), int(userdata[(data + 1)].strip("[]"), 16)));
+                print("User: {}\{} ----- RID: {}".format(args.w, userdata[data].strip("[]"),
+                                                         int(userdata[(data + 1)].strip("[]"), 16)));
 
             print("");
     except subprocess.CalledProcessError as cpe:
@@ -529,7 +601,9 @@ def enum_shares(args):
             cprint("[V] Attempting to get share list using authentication", "yellow", attrs=["bold"]);
 
         # my $shares = `net rpc share -W '$global_workgroup' -I '$global_target' -U'$global_username'\%'$global_password' 2>&1`; #perl example with net rpc command
-        output = subprocess.check_output(["smbclient", "-W", args.w, "-L", r"//{}".format(args.t), "-U", "{}%{}".format(args.u, args.p)]).decode("UTF-8");
+        output = subprocess.check_output(
+            ["smbclient", "-W", args.w, "-L", r"//{}".format(args.t), "-U", "{}%{}".format(args.u, args.p)]).decode(
+            "UTF-8");
 
         if output.find("NT_STATUS_ACCESS_DENIED") > -1:
             cprint("[E] Can't list shares: NT_STATUS_ACCESS_DENIED\n", "red", attrs=["bold"]);
@@ -541,11 +615,21 @@ def enum_shares(args):
     try:
         print("\n[+] Attempting to map shares on {}\n".format(args.t));
 
-        for share in re.findall("\n\s*([ \S]+?)\s+(?:Disk|IPC|Printer)", output, re.I):
-            if args.v:
-                cprint("[V] Attempting map to share //{}/{} with smbclient\n".format(args.t, share), "yellow", attrs=["bold"]);
+        # Filter down the share list returned from the smbclient list command above
+        shares = re.findall("\t([\S]+?)\s+(?:Disk|IPC|Printer|-{4,})", output, re.I);
 
-            map_response = subprocess.Popen(["smbclient", "-W", args.w, r"//{}/{}".format(args.t, share), "-U", "{}%{}".format(args.u, args.p), "-c dir"], stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
+        # Remove any line from the list shares that contains 4 or more -'s in it with a comprehension list (not pretty but it works for now, the number may need to be changed depending on the environment, sharename, etc.)
+        sharelist = [s for s in shares if not re.search("-{4,}", s, re.I)];
+
+
+        for share in sharelist:
+            if args.v:
+                cprint("[V] Attempting map to share //{}/{} with smbclient\n".format(args.t, share), "yellow",
+                       attrs=["bold"]);
+
+            map_response = subprocess.Popen(
+                ["smbclient", "-W", args.w, r"//{}/{}".format(args.t, share), "-U", "{}%{}".format(args.u, args.p),
+                 "-c dir"], stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
 
             if map_response.find("NT_STATUS_ACCESS_DENIED listing") > -1:
                 cprint("""\t[-] Share: {}
@@ -563,16 +647,19 @@ def enum_shares(args):
             Listing: OK\n
                 """.format(share), "green", attrs=["bold"]);
             else:
-                cprint("\t[+] Can't understand response for {}: {}\n".format(share, map_response), "red", attrs=["bold"]);
+                cprint("\t[E] Can't understand response for {}: {}\n".format(share, map_response), "red",
+                       attrs=["bold"]);
     except subprocess.CalledProcessError as cpe:
         cprint(cpe.output.decode("UTF-8"), "red", attrs=["bold"]);
 
 
 def enum_users_rids(args):
     try:
-        #Get SID with known usernames
+        # Get SID with known usernames
         for known_username in args.k:
-            output = subprocess.Popen(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c lookupnames '{}'".format(known_username)], stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
+            output = subprocess.Popen(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t,
+                                       "-c lookupnames '{}'".format(known_username)],
+                                      stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
 
             if args.v:
                 cprint("[V] Attempting to get SID with lookupnames\n", "yellow", attrs=["bold"]);
@@ -581,11 +668,13 @@ def enum_users_rids(args):
             logon = "username {}, password {}".format(args.u, args.p);
 
             if output.find("NT_STATUS_ACCESS_DENIED") > -1:
-                cprint("[E] Couldn't get SID: NT_STATUS_ACCESS_DENIED.  RID cycling not possible.\n", "red", attrs=["bold"]);
+                cprint("[E] Couldn't get SID: NT_STATUS_ACCESS_DENIED.  RID cycling not possible.\n", "red",
+                       attrs=["bold"]);
                 break;
             elif output.find("NT_STATUS_NONE_MAPPED") > -1:
                 if args.v:
-                    cprint("[V] User {} doesn't exist. User enumeration should be possible, but SID needed...\n".format(known_username), "yellow", attrs=["bold"]);
+                    cprint("[V] User {} doesn't exist. User enumeration should be possible, but SID needed...\n".format(
+                        known_username), "yellow", attrs=["bold"]);
                 continue;
             elif re.search("(S-1-5-[\d]+-[\d-]+)", output, re.I):
                 print("[I] Found new SID: {}".format(output));
@@ -601,19 +690,22 @@ def enum_users_rids(args):
     except subprocess.CalledProcessError as cpe:
         cprint(cpe.output.decode("UTF-8"), "red", attrs=["bold"]);
 
-    #Get some more SIDs
+    # Get some more SIDs
     try:
         if args.v:
             cprint("[V] Attempting to get SIDs from {} with lsaenumsid\n".format(args.t), "yellow", attrs=["bold"]);
 
-        output = subprocess.Popen(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c lsaenumsid"], stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
+        output = subprocess.Popen(
+            ["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c lsaenumsid"],
+            stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
 
         for sid in output.splitlines():
             if args.v:
                 cprint("[V] Processing SID {}\n".format(sid), "yellow", attrs=["bold"]);
 
             if sid.find("NT_STATUS_ACCESS_DENIED") > -1:
-                cprint("[E] Couldn't get SID: NT_STATUS_ACCESS_DENIED.  RID cycling not possible.\n", "red", attrs=["bold"]);
+                cprint("[E] Couldn't get SID: NT_STATUS_ACCESS_DENIED.  RID cycling not possible.\n", "red",
+                       attrs=["bold"]);
                 continue;
             elif re.search("(S-1-5-[\d]+-[\d-]+)", sid, re.I):
                 print("[I] Found new SID: {}".format(sid));
@@ -627,7 +719,6 @@ def enum_users_rids(args):
             else:
                 continue;
 
-
         print("");
     except subprocess.CalledProcessError as cpe:
         cprint(cpe.output.decode("UTF-8"), "red", attrs=["bold"]);
@@ -639,7 +730,9 @@ def enum_shares_unauth(args):
             shares = file.read().splitlines();
 
         for share in shares:
-            output = subprocess.Popen(["smbclient", "-W", args.w, r"//{}/{}".format(args.t, share), "-c", "dir " "-U", "{}%{}".format(args.u, args.p)], stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
+            output = subprocess.Popen(["smbclient", "-W", args.w, r"//{}/{}".format(args.t, share), "-c", "dir " "-U",
+                                       "{}%{}".format(args.u, args.p)], stdout=subprocess.PIPE).stdout.read().decode(
+                "UTF-8");
 
             if re.search("blocks of size|blocks available", output, re.I):
                 print("{} EXISTS, Allows access using username: {}, password: {}\n".format(share, args.u, args.p));
@@ -658,7 +751,8 @@ def enum_privs(args):
         if args.v:
             cprint("[V] Attempting to get privilege info with enumprivs\n", "yellow", attrs=["bold"]);
 
-        output = subprocess.check_output(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), "-c enumprivs", args.t]).decode("UTF-8");
+        output = subprocess.check_output(
+            ["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), "-c enumprivs", args.t]).decode("UTF-8");
 
         print("{}\n".format(output));
 
@@ -671,7 +765,9 @@ def get_printer_info(args):
         if args.v:
             cprint("[V] Attempting to get printer info with enumprinters\n", "yellow", attrs=["bold"]);
 
-        output = subprocess.check_output(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), "-c enumprinters", args.t]).decode("UTF-8");
+        output = subprocess.check_output(
+            ["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), "-c enumprinters", args.t]).decode(
+            "UTF-8");
 
         print("{}\n\n".format(output));
     except subprocess.CalledProcessError as cpe:
@@ -683,7 +779,9 @@ def enum_services(args):
         if args.v:
             cprint("[V] Attempting to get a list of services with net service list\n", "yellow", attrs=["bold"]);
 
-        output = subprocess.check_output(["net", "rpc", "service", "list", "-I", args.t, "-U", "{}\\{}%{}".format(args.w, args.u, args.p)]).decode("UTF-8");
+        output = subprocess.check_output(
+            ["net", "rpc", "service", "list", "-I", args.t, "-U", "{}\\{}%{}".format(args.w, args.u, args.p)]).decode(
+            "UTF-8");
 
         print(output);
     except subprocess.CalledProcessError as cpe:
@@ -696,15 +794,20 @@ def enum_services(args):
 def pass_spray(args):
     try:
         if args.v:
-            cprint("[V] Attempting to obtain valid credentials via password spray (timeout set to {} seconds)".format(args.timeout), "red", attrs=["bold"]);
+            cprint("[V] Attempting to obtain valid credentials via password spray (timeout set to {} seconds)".format(
+                args.timeout), "red", attrs=["bold"]);
 
         for user in user_list:
-            output = subprocess.Popen(["rpcclient", "-W", args.w, "-U", "{}%{}".format(user, args.spray), "-c getusername;quit", args.t], stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
+            output = subprocess.Popen(
+                ["rpcclient", "-W", args.w, "-U", "{}%{}".format(user, args.spray), "-c getusername;quit", args.t],
+                stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
 
             if output.find("Cannot connect to server") > -1 or output.find("Error was NT_STATUS_LOGON_FAILURE") > -1:
-                cprint("[-] Username: '{}'\tPassword: '{}'\tResult: invalid".format(user, args.spray), "red", attrs=["bold"]);
+                cprint("[-] Username: '{}'\tPassword: '{}'\tResult: invalid".format(user, args.spray), "red",
+                       attrs=["bold"]);
             elif output.find("Account Name") > -1 or output.find("Authority Name") > -1:
-                cprint("[+] Username: '{}'\tPassword: '{}'\tResult: !*****VALID*****!".format(user, args.spray), "green", attrs=["bold"]);
+                cprint("[+] Username: '{}'\tPassword: '{}'\tResult: !*****VALID*****!".format(user, args.spray),
+                       "green", attrs=["bold"]);
             else:
                 print(output);
 
@@ -731,12 +834,16 @@ def brute_pass(args):
         words = open(args.wordlist, "r").read().splitlines();
 
         for word in words:
-            output = subprocess.Popen(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.brute, word), args.t, "-c getusername;quit"], stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
+            output = subprocess.Popen(
+                ["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.brute, word), args.t, "-c getusername;quit"],
+                stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
 
             if output.find("Cannot connect to server") > -1 or output.find("Error was NT_STATUS_LOGON_FAILURE") > -1:
-                cprint("[-] Username: '{}'\tPassword: '{}'\tResult: invalid".format(args.brute, word), "red", attrs=["bold"]);
+                cprint("[-] Username: '{}'\tPassword: '{}'\tResult: invalid".format(args.brute, word), "red",
+                       attrs=["bold"]);
             elif output.find("Account Name") > -1 or output.find("Authority Name") > -1:
-                cprint("[+] Username: '{}'\tPassword: '{}'\tResult: !*****VALID*****!".format(args.brute, word), "green", attrs=["bold"]);
+                cprint("[+] Username: '{}'\tPassword: '{}'\tResult: !*****VALID*****!".format(args.brute, word),
+                       "green", attrs=["bold"]);
             else:
                 print(output);
 
@@ -758,7 +865,6 @@ def brute_pass(args):
         cprint(cpe.output.decode("UTF-8"), "red", attrs=["bold"]);
     except FileNotFoundError as fnfe:
         cprint("[E] File path specified is not valid", "red", attrs=["bold"]);
-
 
 
 def main():
@@ -803,10 +909,9 @@ Password ------------------> {}
 Known Usernames -----------> {}
 """.format(timestart.strftime("%b %d %Y %H:%M:%S"), carglist.t, carglist.R, carglist.u, carglist.p, carglist.k));
 
+    # Basic Enumeration & Check Session----------------------------------------------------------------------------
 
-    #Basic Enumeration & Check Session----------------------------------------------------------------------------
-
-    #WORKGOUP/DOMAIN NAME INFORMATION
+    # WORKGOUP/DOMAIN NAME INFORMATION
     title = [["Enumerating Workgroup/Domain on {}".format(carglist.t).title()]];
     header = terminaltables.AsciiTable(title);
     print(header.table);
@@ -816,48 +921,44 @@ Known Usernames -----------> {}
     else:
         cprint("[+]: Domain/workgroup name specified: {}\n".format(carglist.w), "green", attrs=["bold"]);
 
-
-    #NMBLOOKUP/NBTSCAN
-    if(carglist.n):
+    # NMBLOOKUP/NBTSCAN
+    if (carglist.n):
         title = [["NBTStat Information for {}".format(carglist.t).title()]];
         header = terminaltables.AsciiTable(title);
         print(header.table);
         get_nbtstat(carglist.t);
 
-
-    #NULL SESSION CHECK
+    # NULL SESSION CHECK
     title = [["Session Check on {}".format(carglist.t).title()]];
     header = terminaltables.AsciiTable(title);
     print(header.table);
 
     make_session(carglist);
 
-    #GET LDAP INFO
-    if(carglist.l):
+    # GET LDAP INFO
+    if (carglist.l):
         title = [["Getting information via LDAP for {}".format(carglist.t).title()]];
         header = terminaltables.AsciiTable(title);
         print(header.table);
 
         get_ldapinfo(carglist);
 
-    #GET DOMAIN SID
+    # GET DOMAIN SID
     title = [["Getting domain SID for {}".format(carglist.t).title()]];
     header = terminaltables.AsciiTable(title);
     print(header.table);
 
     get_domain_sid(carglist);
 
-
-    #GET OS Information
-    if(carglist.o):
+    # GET OS Information
+    if (carglist.o):
         title = [["Getting OS information for {}".format(carglist.t).title()]];
         header = terminaltables.AsciiTable(title);
         print(header.table);
 
         get_os_info(carglist);
 
-
-    #Query-compatible functions-----------------------------------------------------------------------------------
+    # Query-compatible functions-----------------------------------------------------------------------------------
     if (carglist.q):
         title = [["Getting Domain Information {}".format(carglist.t).title()]];
         header = terminaltables.AsciiTable(title);
@@ -872,8 +973,7 @@ Known Usernames -----------> {}
 
         get_dc_names(carglist);
 
-
-    #Enum-compatiable functions-----------------------------------------------------------------------------------
+    # Enum-compatiable functions-----------------------------------------------------------------------------------
 
     if (carglist.U):
         title = [["Users on {}".format(carglist.t).title()]];
@@ -902,12 +1002,12 @@ Known Usernames -----------> {}
         print(header.table);
 
         enum_groups(carglist);
-        #enum_dom_groups(carglist);
+        # enum_dom_groups(carglist);
 
         # enum_machines()
         # enum_lsa_policy()
 
-    #Enumerate privileges
+    # Enumerate privileges
     if (carglist.e):
         title = [["Privileges Enumeration on {}".format(carglist.t).title()]];
         header = terminaltables.AsciiTable(title);
@@ -922,7 +1022,7 @@ Known Usernames -----------> {}
 
         enum_services(carglist);
 
-    #Misc functions-----------------------------------------------------------------------------------------------
+    # Misc functions-----------------------------------------------------------------------------------------------
     if carglist.r:
         title = [["Users on {} via RID cycling (RIDS: {})".format(carglist.t, carglist.R).title()]];
         header = terminaltables.AsciiTable(title);
@@ -944,8 +1044,7 @@ Known Usernames -----------> {}
 
         get_printer_info(carglist);
 
-
-    #Extended functions-------------------------------------------------------------------------------------------
+    # Extended functions-------------------------------------------------------------------------------------------
     if carglist.spray:
         if len(user_list) > 0:
             title = [["Starting password spray against {}".format(carglist.t).title()]];
@@ -954,7 +1053,9 @@ Known Usernames -----------> {}
 
             pass_spray(carglist);
         elif len(user_list) <= 0:
-            cprint("[E]: The user list is not populated, which means no users were able to be found. Aborting password spraying procedures.\n", "red", attrs=["bold"]);
+            cprint(
+                "[E]: The user list is not populated, which means no users were able to be found. Aborting password spraying procedures.\n",
+                "red", attrs=["bold"]);
         else:
             cprint("[E]: Unable to perform password spraying procedures\n", "red", attrs=["bold"]);
 
@@ -970,12 +1071,11 @@ Known Usernames -----------> {}
         else:
             cprint("[E]: Unable to perform brute forcing procedures\n", "red", attrs=["bold"]);
 
-
-
-    #Enum4LinuxPy complete----------------------------------------------------------------------------------------
+    # Enum4LinuxPy complete----------------------------------------------------------------------------------------
     timeend = datetime.datetime.now();
-    elapsedtime = (timeend-timestart);
-    cprint("[!] Enum4LinuxPy completed at {} - Duration of time ran for {}\n".format(timeend, elapsedtime), "magenta", attrs=["bold"]);
+    elapsedtime = (timeend - timestart);
+    cprint("[!] Enum4LinuxPy completed at {} - Duration of time ran for {}\n".format(timeend, elapsedtime), "magenta",
+           attrs=["bold"]);
 
 
 if __name__ == '__main__':
