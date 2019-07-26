@@ -730,20 +730,20 @@ def enum_shares_unauth(args):
             shares = file.read().splitlines();
 
         for share in shares:
-            output = subprocess.Popen(["smbclient", "-W", args.w, r"//{}/{}".format(args.t, share), "-c", "dir " "-U",
-                                       "{}%{}".format(args.u, args.p)], stdout=subprocess.PIPE).stdout.read().decode(
-                "UTF-8");
+            output = subprocess.Popen(["smbclient", "-W", args.w, r"//{}/{}".format(args.t, share), "-U", "{}%{}".format(args.u, args.p), "-c", "dir;q"], stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
 
             if re.search("blocks of size|blocks available", output, re.I):
-                print("{} EXISTS, Allows access using username: {}, password: {}\n".format(share, args.u, args.p));
-            elif re.search("NT_STATUS_BAD_NETWORK_NAME tree connect failed|NT_STATUS_BAD_NETWORK_NAME", output, re.I):
-                print("{} doesn't exist\n".format(share));
+                cprint("[+] {} EXISTS, allows access using username: {}, password: {}\n".format(share, args.u, args.p), "green", attrs=["bold"]);
             elif re.search("NT_STATUS_ACCESS_DENIED", output, re.I):
-                print("{} EXISTS\n".format(share));
+                cprint("[+] {} EXISTS, but credentials aren't valid\n".format(share), "yellow", attrs=["bold"]);
+            elif re.search("NT_STATUS_BAD_NETWORK_NAME", output, re.I):
+                cprint("[-] {} doesn't exist\n".format(share), "red", attrs=["bold"]);
             else:
-                print(output);
+                cprint("Cannot understand response: {}".format(output), "red", attrs=["bold"]);
     except subprocess.CalledProcessError as cpe:
         cprint(cpe.output.decode("UTF-8"), "red", attrs=["bold"]);
+    except FileNotFoundError as fnfe:
+        cprint("Path to file containing a list of share names is not valid", "red", attrs=["bold"]);
 
 
 def enum_privs(args):
