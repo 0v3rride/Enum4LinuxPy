@@ -797,16 +797,20 @@ def pass_spray(args):
             cprint("[V] Attempting to obtain valid credentials via password spray (timeout set to {} seconds)".format(
                 args.timeout), "red", attrs=["bold"]);
 
+        count = 0;
+
         for user in user_list:
+            count = count + 1;
+
             output = subprocess.Popen(
                 ["rpcclient", "-W", args.w, "-U", "{}%{}".format(user, args.spray), "-c getusername;quit", args.t],
                 stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
 
             if output.find("Cannot connect to server") > -1 or output.find("Error was NT_STATUS_LOGON_FAILURE") > -1:
-                cprint("[-] Username: '{}'\tPassword: '{}'\tResult: invalid".format(user, args.spray), "red",
+                cprint("[{}] Username: '{}'\tPassword: '{}'\tResult: invalid".format(count, user, args.spray), "red",
                        attrs=["bold"]);
             elif output.find("Account Name") > -1 or output.find("Authority Name") > -1:
-                cprint("[+] Username: '{}'\tPassword: '{}'\tResult: !*****VALID*****!".format(user, args.spray),
+                cprint("[{}] Username: '{}'\tPassword: '{}'\tResult: !*****VALID*****!".format(count, user, args.spray),
                        "green", attrs=["bold"]);
             else:
                 print(output);
@@ -833,16 +837,20 @@ def brute_pass(args):
     try:
         words = open(args.wordlist, "r").read().splitlines();
 
+        count = 0;
+
         for word in words:
+            count = count + 1;
+            
             output = subprocess.Popen(
                 ["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.brute, word), args.t, "-c getusername;quit"],
                 stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
 
             if output.find("Cannot connect to server") > -1 or output.find("Error was NT_STATUS_LOGON_FAILURE") > -1:
-                cprint("[-] Username: '{}'\tPassword: '{}'\tResult: invalid".format(args.brute, word), "red",
+                cprint("[{}] Username: '{}'\tPassword: '{}'\tResult: invalid".format(count, args.brute, word), "red",
                        attrs=["bold"]);
             elif output.find("Account Name") > -1 or output.find("Authority Name") > -1:
-                cprint("[+] Username: '{}'\tPassword: '{}'\tResult: !*****VALID*****!".format(args.brute, word),
+                cprint("[{}] Username: '{}'\tPassword: '{}'\tResult: !*****VALID*****!".format(count, args.brute, word),
                        "green", attrs=["bold"]);
             else:
                 print(output);
