@@ -8,12 +8,14 @@ import re;
 import sys;
 import time;
 import random;
+import getpass;
 from termcolor import cprint;
 
 # Global Vars
 dependent_programs = ["nmblookup", "net", "rpcclient", "smbclient"];
 optional_dependent_programs = ["polenum", "ldapsearch"];
 user_list = [];
+full_sid = None;
 
 ###############################################################################
 # The following  mappings for nmblookup (nbtstat) status codes to human readable
@@ -84,7 +86,7 @@ nbt_info = {
 
 
 def setArgs(uargs):
-    # check arguments
+    # check main arguments
     if uargs.a:
         uargs.U = True;
         uargs.S = True;
@@ -105,10 +107,18 @@ def setArgs(uargs):
     else:
         uargs.a = False;
 
-    # check if null creds wanted
+    # check if lookupsids is true
+    if uargs.lookupsids:
+        uargs.r = True;
+
+    # check if junk creds wanted
     if uargs.j:
         uargs.u = "Enum4Linux";
         uargs.p = "Py";
+
+    # check if null password is wanted
+    if uargs.p is None or uargs.p is "":
+        uargs.p = getpass.getpass("Password:");
 
     return uargs;
 
@@ -121,7 +131,7 @@ def checkDependentProgs(proglist, verbose):
         exit(1);
 
     for prog in proglist:
-        response = subprocess.run(["which", "{}".format(prog)], stdout=subprocess.PIPE);
+        response = subprocess.run(["which", "{}".format(prog)], stdout=subprocess.PIPE, shell=False);
 
         if response.returncode is 0 and verbose:
             cprint("[V]: {} is present on this machine.".format(prog), "green", attrs=["bold"]);
@@ -132,7 +142,7 @@ def checkDependentProgs(proglist, verbose):
 
 def checkOptProgs(proglist, verbose):
     for prog in proglist:
-        response = subprocess.run(["which", "{}".format(prog)], stdout=subprocess.PIPE);
+        response = subprocess.run(["which", "{}".format(prog)], stdout=subprocess.PIPE, shell=False);
 
         if response.returncode is 0 and verbose:
             cprint("[V]: {} is present on this machine.".format(prog), "green", attrs=["bold"]);
@@ -188,8 +198,6 @@ def getArgs():
     # std.add_argument("-D", required=False, action="store_true", default=False, help=");
 
     addops = parser.add_argument_group("Additional options");
-    addops.add_argument("-r", required=False, action="store_true", default=False,
-                        help="enumerate users via RID cycling");
     addops.add_argument("-i", required=False, action="store_true", default=False, help="Get printer information");
     addops.add_argument("-o", required=False, action="store_true", default=False, help="Get OS information");
     addops.add_argument("-n", required=False, action="store_true", default=False,
@@ -210,19 +218,27 @@ def getArgs():
     addops.add_argument("-a", required=False, action="store_true", default=False, help="""
     Do all simple enumeration (-U -S -G -P -r -o -n -i).
     This option is enabled if you don't provide any other options.""");
-    addops.add_argument("-K", required=False, type=int, default=10, help="""
-    Keep searching RIDs until n number of consecutive RIDs don't correspond to a username. 
-    Implies RID range ends at highest_rid. Useful against DCs (default 10).""");
-    addops.add_argument("-k", required=False, type=str, nargs='+',
-                        default=["administrator", "guest", "krbtgt", "domain admins", "root", "bin", "none"], help="""
-    User(s) that exists on remote system (default: ["administrator", "guest", "krbtgt", "domain admins", "root", "bin", "none"].
-    Used to get sid with "lookupsid known_username" Use spaces to try several users: -k admin user1 user2)""")
     addops.add_argument("-w", required=False, type=str, default=None,
                         help="Specify workgroup manually (usually found automatically)");
     addops.add_argument("-s", required=False, type=str, default=None,
                         help="path to list for brute force guessing share names");
-    addops.add_argument("-R", required=False, type=str, nargs='+', default=["500-550", "1000-1050"],
-                        help="RID ranges to enumerate (default: rid_range, implies -r) Use spaces to try several rid ranges: -R 0-100 1000-2500 500-600)");
+
+
+    ridsnsids = parser.add_argument_group("Options for RID and SID enumeration");
+    ridsnsids.add_argument("-r", required=False, action="store_true", default=False,
+                        help="enumerate users via RID cycling");
+    ridsnsids.add_argument("-R", required=False, type=str, nargs='+', default=["500-550", "1000-1050"],
+                        help="RID ranges to enumerate, use with --lookupsids (default: rid_range, implies -r) Use spaces to try several rid ranges: -R 0-100 1000-2500 500-600)");
+    ridsnsids.add_argument("--basesid", required=False, type=str, default="S-1-5-21", help="The base SID to use when preforming forward SID lookups (default S-1-5-21-)");
+    ridsnsids.add_argument("--lookupsids", required=False, action="store_true", default=False, help="Perform forward bruteforcing on RIDs via the lookupsids command in rpcclient. Similar to impacket's lookupsids.py script");
+    ridsnsids.add_argument("-k", required=False, type=str, nargs='+',
+                        default=["administrator", "guest", "krbtgt", "domain admins", "root", "bin", "none"], help="""
+    User(s) that exists on remote system (default: ["administrator", "guest", "krbtgt", "domain admins", "root", "bin", "none"].
+    Reverse SID lookup via "lookupsid known_username" Use spaces to try several users: -k admin user1 user2)""");
+    ridsnsids.add_argument("-K", required=False, type=int, default=10, help="""
+    Keep searching RIDs until n number of consecutive RIDs don't correspond to a username. 
+    Implies RID range ends at highest_rid. Useful against DCs (default 10).""");
+
 
     passops = parser.add_argument_group("Password spraying and brute forcing options");
     passops.add_argument("--brute", required=False, type=str, default=None,
@@ -244,7 +260,7 @@ def get_workgroup(args):
         if args.v:
             cprint("[V] Attempting to get domain name", "yellow", attrs=["bold"]);
 
-        output = str(subprocess.check_output(["nmblookup", "-A", str(args.t)]).decode("UTF-8"));
+        output = str(subprocess.check_output(["nmblookup", "-A", str(args.t)], shell=False).decode("UTF-8"));
 
         for line in output.splitlines():
             if "       <00> - <GROUP>" in line:
@@ -262,7 +278,7 @@ def get_domain_info(args):
             cprint("[V] Attempting to get domain information with querydominfo\n", "yellow", attrs=["bold"]);
 
         output = subprocess.check_output(
-            ["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c", "querydominfo"]).decode(
+            ["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c", "querydominfo"], shell=False).decode(
             "UTF-8");
 
         if output is not None:
@@ -278,7 +294,7 @@ def get_dc_names(args):
                    attrs=["bold"]);
 
         output = subprocess.check_output(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c",
-                                          "dsr_getdcname {}".format(args.w)]).decode("UTF-8");
+                                          "dsr_getdcname {}".format(args.w)], shell=False).decode("UTF-8");
 
         if output is not None:
             print(output);
@@ -290,13 +306,13 @@ def get_dc_names(args):
             cprint("[V] Attempting to get a domain controller name with getdcname\n", "yellow", attrs=["bold"]);
 
         output = subprocess.check_output(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c",
-                                          "getdcname {}".format(str(args.w).split('.')[0])]).decode("UTF-8");
+                                          "getdcname {}".format(str(args.w).split('.')[0])], shell=False).decode("UTF-8");
 
         if output is not None:
             cprint("[+] UNC Path Found: {}\n".format(output), "green", attrs=["bold"]);
             listout = subprocess.Popen(
                 ["smbclient", "-L", r"{}".format((str(output).strip("\n\r\t\0"))), "-W", args.w, "-U",
-                 "{}%{}".format(args.u, args.p)], stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
+                 "{}%{}".format(args.u, args.p)], stdout=subprocess.PIPE, shell=False).stdout.read().decode("UTF-8");
 
             if listout is not None:
                 cprint(listout, "green", attrs=["bold"]);
@@ -311,7 +327,7 @@ def get_dc_names(args):
 
 def get_nbtstat(target):
     try:
-        output = subprocess.check_output(["nmblookup", "-A", target]).decode("UTF-8");
+        output = subprocess.check_output(["nmblookup", "-A", target], shell=False).decode("UTF-8");
         mac = output.splitlines()[len(output.splitlines()) - 2];
         print("{}\n{}\n\n{}\n".format(output.splitlines()[0], nbt_to_human(output), mac));
     except subprocess.CalledProcessError as cpe:
@@ -350,7 +366,7 @@ def make_session(args):
             cprint("[V] Attempting to make null session", "yellow", attrs=["bold"]);
         output = subprocess.check_output(
             ["smbclient", "-W", args.w, r"//{}/ipc$".format(args.t), "-U", "{}%{}".format(args.u, args.p), "-c",
-             "help"]).decode("UTF-8");
+             "help"], shell=False).decode("UTF-8");
 
         if output.find("session setup failed") > -1:
             cprint(
@@ -373,7 +389,7 @@ def get_ldapinfo(args):
             cprint("[V] Attempting to get long domain name", "yellow", attrs=["bold"]);
 
         output = subprocess.check_output(
-            ["ldapsearch", "-x", "-h", args.t, "-p", "389", "-s", "base", "namingContexts"]).decode("UTF-8");
+            ["ldapsearch", "-x", "-h", args.t, "-p", "389", "-s", "base", "namingContexts"], shell=False).decode("UTF-8");
 
         if output.find("ldap_sasl_bind") > -1:
             cprint("[E] Connection error\n", "red", attrs=["bold"]);
@@ -394,7 +410,7 @@ def get_domain_sid(args):
             cprint("[V] Attempting to get domain SID", "yellow", attrs=["bold"]);
 
         output = subprocess.check_output(
-            ["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c", "'lsaquery'"]).decode(
+            ["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c", "'lsaquery'"], shell=False).decode(
             "UTF-8");
 
         if (output.find("Domain Sid: S-0-0") > -1 or output.find("Domain Sid: (NULL SID)") > -1):
@@ -428,7 +444,7 @@ def get_os_info(args):
 
         output = subprocess.check_output(
             ["smbclient", "-W", args.w, r"//{}/ipc$".format(args.t), "-U", "{}%{}".format(args.u, args.p), "-c",
-             "q"]).decode("UTF-8");
+             "q"], shell=False).decode("UTF-8");
 
         if re.search("(Domain=[^\n]+)", output, re.I):
             print("[+] OS info for {} from smbclient: {}\n".format(args.t, output));
@@ -445,7 +461,7 @@ def get_os_info(args):
                    "yellow", attrs=["bold"]);
 
         output = subprocess.check_output(
-            ["rpcclient", "-W", args.w, "-U", r"{}%{}".format(args.u, args.p), "-c", "srvinfo", args.t]).decode(
+            ["rpcclient", "-W", args.w, "-U", r"{}%{}".format(args.u, args.p), "-c", "srvinfo", args.t], shell=False).decode(
             "UTF-8");
 
         if (output.find("error: NT_STATUS_ACCESS_DENIED") > -1):
@@ -465,7 +481,7 @@ def enum_groups(args):
             # GET LIST OF GROUPS
             output = subprocess.check_output(
                 ["rpcclient", "-W", args.w, "-U", r"{}%{}".format(args.u, args.p), args.t, "-c",
-                 "enumalsgroups {}".format(group)]).decode("UTF-8");
+                 "enumalsgroups {}".format(group)], shell=False).decode("UTF-8");
 
             if (group is "domain"):
                 if args.v:
@@ -499,7 +515,7 @@ def enum_groups(args):
 
                     doutput = subprocess.Popen(
                         ["net", "rpc", "group", "members", groupdata[data].strip("[]"), "-W", args.w, "-I", args.t,
-                         "-U", "{}%{}".format(args.u, args.p)], stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
+                         "-U", "{}%{}".format(args.u, args.p)], stdout=subprocess.PIPE, shell=False).stdout.read().decode("UTF-8");
 
                     if doutput:
                         print("Member List:\n{}".format(doutput));
@@ -521,7 +537,7 @@ def get_group_details_from_rid(rid, args):
 
         output = subprocess.check_output(
             ["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), "-c", "querygroup {}".format(str(rid)),
-             args.t]).decode("UTF-8");
+             args.t], shell=False).decode("UTF-8");
 
         if output:
             print("{}\n".format(output));
@@ -533,7 +549,7 @@ def get_group_details_from_rid(rid, args):
 
 def enum_password_policy(args):
     try:
-        output = subprocess.check_output(["polenum", "{}:{}@{}".format(args.u, args.p, args.t)]).decode("UTF-8");
+        output = subprocess.check_output(["polenum", "{}:{}@{}".format(args.u, args.p, args.t)], shell=False).decode("UTF-8");
 
         if args.v:
             cprint("[V] Attempting to get Password Policy info", "yellow", attrs=["bold"]);
@@ -559,7 +575,7 @@ def enum_users(args):
             cprint("[V] Attempting to get userlist with querydispinfo", "yellow", attrs=["bold"]);
 
         output = subprocess.check_output(
-            ["rpcclient", "-W", args.w, "-c querydispinfo", "-U", "{}%{}".format(args.u, args.p), args.t]).decode(
+            ["rpcclient", "-W", args.w, "-c querydispinfo", "-U", "{}%{}".format(args.u, args.p), args.t], shell=False).decode(
             "UTF-8");
 
         print(output);
@@ -568,7 +584,7 @@ def enum_users(args):
 
         # GET USER RIDS
         userenumdata = subprocess.check_output(
-            ["rpcclient", "-W", args.w, "-c enumdomusers", "-U", "{}%{}".format(args.u, args.p), args.t]).decode(
+            ["rpcclient", "-W", args.w, "-c enumdomusers", "-U", "{}%{}".format(args.u, args.p), args.t], shell=False).decode(
             "UTF-8");
         userdata = re.findall(r"(\[[\w\s\-\_\{\}\.\$]+\])", userenumdata, re.I);
 
@@ -602,7 +618,7 @@ def enum_shares(args):
 
         # my $shares = `net rpc share -W '$global_workgroup' -I '$global_target' -U'$global_username'\%'$global_password' 2>&1`; #perl example with net rpc command
         output = subprocess.check_output(
-            ["smbclient", "-W", args.w, "-L", r"//{}".format(args.t), "-U", "{}%{}".format(args.u, args.p)]).decode(
+            ["smbclient", "-W", args.w, "-L", r"//{}".format(args.t), "-U", "{}%{}".format(args.u, args.p)], shell=False).decode(
             "UTF-8");
 
         if output.find("NT_STATUS_ACCESS_DENIED") > -1:
@@ -629,7 +645,7 @@ def enum_shares(args):
 
             map_response = subprocess.Popen(
                 ["smbclient", "-W", args.w, r"//{}/{}".format(args.t, share), "-U", "{}%{}".format(args.u, args.p),
-                 "-c dir"], stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
+                 "-c dir"], stdout=subprocess.PIPE, shell=False).stdout.read().decode("UTF-8");
 
             if map_response.find("NT_STATUS_ACCESS_DENIED listing") > -1:
                 cprint("""\t[-] Share: {}
@@ -659,7 +675,7 @@ def enum_users_rids(args):
         for known_username in args.k:
             output = subprocess.Popen(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t,
                                        "-c lookupnames '{}'".format(known_username)],
-                                      stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
+                                      stdout=subprocess.PIPE, shell=False).stdout.read().decode("UTF-8");
 
             if args.v:
                 cprint("[V] Attempting to get SID with lookupnames\n", "yellow", attrs=["bold"]);
@@ -676,14 +692,15 @@ def enum_users_rids(args):
                     cprint("[V] User {} doesn't exist. User enumeration should be possible, but SID needed...\n".format(
                         known_username), "yellow", attrs=["bold"]);
                 continue;
+                # TODO: redo regex to be S-[\d-]+ or S-1-5-21-[\d-]+
             elif re.search("(S-1-5-[\d]+-[\d-]+)", output, re.I):
-                print("[I] Found new SID: {}".format(output));
+                cprint("[+] Found new SID: {}".format(output).strip("\n\r\t\0"), "green", attrs=["bold"]);
                 continue;
             elif re.search("(S-1-5-21-[\d]+-[\d-]+)", output, re.I):
-                print("[I] Found new SID: {}".format(output));
+                cprint("[+] Found new SID: {}".format(output).strip("\n\r\t\0"), "green", attrs=["bold"]);
                 continue;
             elif re.search("(S-1-5-22-[\d]+-[\d-]+)", output, re.I):
-                print("[I] Found new SID: {}".format(output));
+                cprint("[+] Found new SID: {}".format(output).strip("\n\r\t\0"), "green", attrs=["bold"]);
                 continue;
             else:
                 continue;
@@ -693,11 +710,11 @@ def enum_users_rids(args):
     # Get some more SIDs
     try:
         if args.v:
-            cprint("[V] Attempting to get SIDs from {} with lsaenumsid\n".format(args.t), "yellow", attrs=["bold"]);
+            cprint("[V] Attempting to get SIDs from {} with lsaenumsid\n\r\t\0".format(args.t), "yellow", attrs=["bold"]);
 
         output = subprocess.Popen(
             ["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c lsaenumsid"],
-            stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
+            stdout=subprocess.PIPE, shell=False).stdout.read().decode("UTF-8");
 
         for sid in output.splitlines():
             if args.v:
@@ -707,17 +724,43 @@ def enum_users_rids(args):
                 cprint("[E] Couldn't get SID: NT_STATUS_ACCESS_DENIED.  RID cycling not possible.\n", "red",
                        attrs=["bold"]);
                 continue;
+                # TODO: redo regex to be S-[\d-]+ or S-1-5-21-[\d-]+
             elif re.search("(S-1-5-[\d]+-[\d-]+)", sid, re.I):
-                print("[I] Found new SID: {}".format(sid));
+                cprint("[+] Found new SID: {}".format(sid), "green", attrs=["bold"]);
                 continue;
             elif re.search("(S-1-5-21-[\d]+-[\d-]+)", sid, re.I):
-                print("[I] Found new SID: {}".format(sid));
+                cprint("[I] Found new SID: {}".format(sid), "green", attrs=["bold"]);
                 continue;
             elif re.search("(S-1-5-22-[\d]+-[\d-]+)", sid, re.I):
-                print("[I] Found new SID: {}".format(sid));
+                cprint("[I] Found new SID: {}".format(sid), "green", attrs=["bold"]);
                 continue;
-            else:
-                continue;
+
+        print("");
+    except subprocess.CalledProcessError as cpe:
+        cprint(cpe.output.decode("UTF-8"), "red", attrs=["bold"]);
+
+
+def enum_users_rids_lookupsids(args):
+    try:
+        output = subprocess.Popen(
+            ["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c lsaenumsid"],
+            stdout=subprocess.PIPE, shell=False).stdout.read().decode("UTF-8");
+
+        full_sid = re.findall("({}-[\d]+-[\d-]+)".format(args.basesid), output, re.I)[0];
+        full_sid = str(full_sid).split('-')[:-1];
+        full_sid = "{}-".format("-".join(full_sid));
+
+        cprint("[+] Domain SID/Workgroup SID: {}\n".format(full_sid[:-1]));
+
+        for ridrange in args.R:
+            minrid = int(str(ridrange).split('-')[0]);
+            maxrid = int(str(ridrange).split('-')[1]);
+            for rid in range(minrid, maxrid):
+                output = subprocess.Popen(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c lookupsids {}{}".format(full_sid, rid)], stdout=subprocess.PIPE, shell=False).stdout.read().decode("UTF-8");
+
+                #if output.find("unknown") <= 0 or output.find("result was NT_STATUS_INVALID_SID") <= 0:
+                if r"*unknown*\*unknown*" not in output and "result was NT_STATUS_INVALID_SID" not in output:
+                    cprint("[+]: {}: {}".format(rid, output.split(" ")[1]).strip("\n\r\t\0"), "green", attrs=["bold"]);
 
         print("");
     except subprocess.CalledProcessError as cpe:
@@ -730,7 +773,7 @@ def enum_shares_unauth(args):
             shares = file.read().splitlines();
 
         for share in shares:
-            output = subprocess.Popen(["smbclient", "-W", args.w, r"//{}/{}".format(args.t, share), "-U", "{}%{}".format(args.u, args.p), "-c", "dir;q"], stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
+            output = subprocess.Popen(["smbclient", "-W", args.w, r"//{}/{}".format(args.t, share), "-U", "{}%{}".format(args.u, args.p), "-c", "dir;q"], stdout=subprocess.PIPE, shell=False).stdout.read().decode("UTF-8");
 
             if re.search("blocks of size|blocks available", output, re.I):
                 cprint("[+] {} EXISTS, allows access using username: {}, password: {}\n".format(share, args.u, args.p), "green", attrs=["bold"]);
@@ -752,7 +795,7 @@ def enum_privs(args):
             cprint("[V] Attempting to get privilege info with enumprivs\n", "yellow", attrs=["bold"]);
 
         output = subprocess.check_output(
-            ["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), "-c enumprivs", args.t]).decode("UTF-8");
+            ["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), "-c enumprivs", args.t], shell=False).decode("UTF-8");
 
         print("{}\n".format(output));
 
@@ -766,12 +809,12 @@ def get_printer_info(args):
             cprint("[V] Attempting to get printer info with enumprinters\n", "yellow", attrs=["bold"]);
 
         output = subprocess.check_output(
-            ["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), "-c enumprinters", args.t]).decode(
+            ["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), "-c enumprinters", args.t], shell=False).decode(
             "UTF-8");
 
         print("{}\n\n".format(output));
     except subprocess.CalledProcessError as cpe:
-        cprint(cpe.output.decode("UTF-8"), "red", attrs=["bold"]);
+        cprint("[E] {}".format(cpe.output.decode("UTF-8"), "red", attrs=["bold"]));
 
 
 def enum_services(args):
@@ -780,7 +823,7 @@ def enum_services(args):
             cprint("[V] Attempting to get a list of services with net service list\n", "yellow", attrs=["bold"]);
 
         output = subprocess.check_output(
-            ["net", "rpc", "service", "list", "-I", args.t, "-U", "{}\\{}%{}".format(args.w, args.u, args.p)]).decode(
+            ["net", "rpc", "service", "list", "-I", args.t, "-U", "{}\\{}%{}".format(args.w, args.u, args.p)], shell=False).decode(
             "UTF-8");
 
         print(output);
@@ -804,7 +847,7 @@ def pass_spray(args):
 
             output = subprocess.Popen(
                 ["rpcclient", "-W", args.w, "-U", "{}%{}".format(user, args.spray), "-c getusername;quit", args.t],
-                stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
+                stdout=subprocess.PIPE, shell=False).stdout.read().decode("UTF-8");
 
             if output.find("Cannot connect to server") > -1 or output.find("Error was NT_STATUS_LOGON_FAILURE") > -1:
                 cprint("[{}] Username: '{}'\tPassword: '{}'\tResult: invalid".format(count, user, args.spray), "red",
@@ -841,10 +884,10 @@ def brute_pass(args):
 
         for word in words:
             count = count + 1;
-            
+
             output = subprocess.Popen(
                 ["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.brute, word), args.t, "-c getusername;quit"],
-                stdout=subprocess.PIPE).stdout.read().decode("UTF-8");
+                stdout=subprocess.PIPE, shell=False).stdout.read().decode("UTF-8");
 
             if output.find("Cannot connect to server") > -1 or output.find("Error was NT_STATUS_LOGON_FAILURE") > -1:
                 cprint("[{}] Username: '{}'\tPassword: '{}'\tResult: invalid".format(count, args.brute, word), "red",
@@ -1032,11 +1075,18 @@ Known Usernames -----------> {}
 
     # Misc functions-----------------------------------------------------------------------------------------------
     if carglist.r:
-        title = [["Users on {} via RID cycling (RIDS: {})".format(carglist.t, carglist.R).title()]];
+        title = [["Users on {} via Reverse RID cycling (Known Users: {})".format(carglist.t, carglist.K).title()]];
         header = terminaltables.AsciiTable(title);
         print(header.table);
 
         enum_users_rids(carglist);
+
+    if carglist.lookupsids:
+        title = [["Users on {} via Forward RID cycling (RIDs: {} - Base SID: {})".format(carglist.t, carglist.R, carglist.basesid).title()]];
+        header = terminaltables.AsciiTable(title);
+        print(header.table);
+
+        enum_users_rids_lookupsids(carglist);
 
     if carglist.s:
         title = [["Brute Force Share Enumeration on {}".format(carglist.t).title()]];
