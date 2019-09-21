@@ -759,8 +759,10 @@ def enum_users_rids_lookupsids(args):
                 output = subprocess.Popen(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c lookupsids {}{}".format(full_sid, rid)], stdout=subprocess.PIPE, shell=False).stdout.read().decode("UTF-8");
 
                 #if output.find("unknown") <= 0 or output.find("result was NT_STATUS_INVALID_SID") <= 0:
-                if r"*unknown*\*unknown*" not in output and "result was NT_STATUS_INVALID_SID" not in output:
-                    cprint("[+]: {}: {}".format(rid, output.split(" ")[1]).strip("\n\r\t\0"), "green", attrs=["bold"]);
+                if output is None or output is "":
+                    cprint("[E] No matches found", "red", attrs=["bold"]);
+                elif r"*unknown*\*unknown*" not in output and "result was NT_STATUS_INVALID_SID" not in output:
+                    cprint("[+] {}: {}".format(rid, output.split(" ")[1]).strip("\n\r\t\0"), "green", attrs=["bold"]);
 
         print("");
     except subprocess.CalledProcessError as cpe:
