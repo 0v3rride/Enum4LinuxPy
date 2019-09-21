@@ -107,10 +107,6 @@ def setArgs(uargs):
     else:
         uargs.a = False;
 
-    # check if lookupsids is true
-    if uargs.lookupsids:
-        uargs.r = True;
-
     # check if junk creds wanted
     if uargs.j:
         uargs.u = "Enum4Linux";
