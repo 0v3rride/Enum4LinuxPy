@@ -370,17 +370,15 @@ def make_session(args):
 
         if output.find("session setup failed") > -1:
             cprint(
-                "[E] Server doesn't allow session using username '{}', password '{}'.  Aborting remainder of tests.\n".format(
+                "[E] Server doesn't allow session using username '{}', password '{}'\n".format(
                     args.u, args.p), "red", attrs=["bold"]);
-            exit(1);
         else:
             cprint("[+] Server {} allows sessions using username '{}', password '{}'\n".format(args.t, args.u, args.p),
                    "green", attrs=["bold"]);
     except subprocess.CalledProcessError as cpe:
         cprint(
-            "[E] Server doesn't allow session using username '{}', password '{}'.  Aborting remainder of tests.\n".format(
+            "[E] Server doesn't allow session using username '{}', password '{}'\n".format(
                 args.u, args.p), "red", attrs=["bold"]);
-        exit(1);
 
 
 def get_ldapinfo(args):
