@@ -229,12 +229,12 @@ def getArgs():
                         help="enumerate users via RID cycling");
     ridsnsids.add_argument("-R", required=False, type=str, nargs='+', default=["500-550", "1000-1050"],
                         help="RID ranges to enumerate, use with --lookupsids (default: rid_range, implies -r) Use spaces to try several rid ranges: -R 0-100 1000-2500 500-600)");
-    ridsnsids.add_argument("--basesid", required=False, type=str, default="S-1-5-21", help="The base SID to use when preforming forward SID lookups (default S-1-5-21-)");
-    ridsnsids.add_argument("--lookupsids", required=False, action="store_true", default=False, help="Perform forward bruteforcing on RIDs via the lookupsids command in rpcclient. Similar to impacket's lookupsids.py script");
+    ridsnsids.add_argument("--basesid", required=False, type=str, default="S-1-5-21", help="The base SID to use when preforming SID bruteforcing (-lookupsids) (default S-1-5-21-)");
+    ridsnsids.add_argument("--lookupsids", required=False, action="store_true", default=False, help="Perform RID bruteforce (SID -> Object) via the lookupsids command in rpcclient. Similar to impacket's lookupsids.py script");
     ridsnsids.add_argument("-k", required=False, type=str, nargs='+',
                         default=["administrator", "guest", "krbtgt", "domain admins", "root", "bin", "none"], help="""
     User(s) that exists on remote system (default: ["administrator", "guest", "krbtgt", "domain admins", "root", "bin", "none"].
-    Reverse SID lookup via "lookupsid known_username" Use spaces to try several users: -k admin user1 user2)""");
+    SID lookup via "lookupsid known_username" Use spaces to try several users: -k admin user1 user2)""");
     ridsnsids.add_argument("-K", required=False, type=int, default=10, help="""
     Keep searching RIDs until n number of consecutive RIDs don't correspond to a username. 
     Implies RID range ends at highest_rid. Useful against DCs (default 10).""");
@@ -746,25 +746,31 @@ def enum_users_rids_lookupsids(args):
             ["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c lsaenumsid"],
             stdout=subprocess.PIPE, shell=False).stdout.read().decode("UTF-8");
 
-        full_sid = re.findall("({}-[\d]+-[\d-]+)".format(args.basesid), output, re.I)[0];
-        full_sid = str(full_sid).split('-')[:-1];
-        full_sid = "{}-".format("-".join(full_sid));
+        if not output or output is "":
+            cprint("[E] Could not find any matches with the base sid provided\n", "red", attrs=["bold"]);
+        else:
 
-        cprint("[+] Domain SID/Workgroup SID: {}\n".format(full_sid[:-1]));
+            full_sid = re.findall("({}-[\d]+-[\d-]+)".format(args.basesid), output, re.I)[0];
+            full_sid = str(full_sid).split('-')[:-1];
+            full_sid = "{}-".format("-".join(full_sid));
 
-        for ridrange in args.R:
-            minrid = int(str(ridrange).split('-')[0]);
-            maxrid = int(str(ridrange).split('-')[1]);
-            for rid in range(minrid, maxrid):
-                output = subprocess.Popen(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c lookupsids {}{}".format(full_sid, rid)], stdout=subprocess.PIPE, shell=False).stdout.read().decode("UTF-8");
+            cprint("[+] Domain SID/Workgroup SID: {}\n".format(full_sid[:-1]));
 
-                #if output.find("unknown") <= 0 or output.find("result was NT_STATUS_INVALID_SID") <= 0:
-                if r"*unknown*\*unknown*" not in output and "result was NT_STATUS_INVALID_SID" not in output:
-                    cprint("[+]: {}: {}".format(rid, output.split(" ")[1]).strip("\n\r\t\0"), "green", attrs=["bold"]);
+            for ridrange in args.R:
+                minrid = int(str(ridrange).split('-')[0]);
+                maxrid = int(str(ridrange).split('-')[1]);
+                for rid in range(minrid, maxrid):
+                    output = subprocess.Popen(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c lookupsids {}{}".format(full_sid, rid)], stdout=subprocess.PIPE, shell=False).stdout.read().decode("UTF-8");
+
+                    #if output.find("unknown") <= 0 or output.find("result was NT_STATUS_INVALID_SID") <= 0:
+                    if r"*unknown*\*unknown*" not in output and "result was NT_STATUS_INVALID_SID" not in output:
+                        cprint("[+]: {}: {}".format(rid, output.split(" ")[1]).strip("\n\r\t\0"), "green", attrs=["bold"]);
 
         print("");
     except subprocess.CalledProcessError as cpe:
         cprint(cpe.output.decode("UTF-8"), "red", attrs=["bold"]);
+    except IndexError as ie:
+        cprint("[E] Could not find any matches with the base sid provided\n", "red", attrs=["bold"]);
 
 
 def enum_shares_unauth(args):
@@ -958,7 +964,8 @@ RID Ranges ----------------> {}
 Username ------------------> {}
 Password ------------------> {}
 Known Usernames -----------> {}
-""".format(timestart.strftime("%b %d %Y %H:%M:%S"), carglist.t, carglist.R, carglist.u, carglist.p, carglist.k));
+Base SID ------------------> {}
+""".format(timestart.strftime("%b %d %Y %H:%M:%S"), carglist.t, carglist.R, carglist.u, carglist.p, carglist.k, carglist.basesid));
 
     # Basic Enumeration & Check Session----------------------------------------------------------------------------
 
@@ -1075,14 +1082,14 @@ Known Usernames -----------> {}
 
     # Misc functions-----------------------------------------------------------------------------------------------
     if carglist.r:
-        title = [["Users on {} via Reverse RID cycling (Known Users: {})".format(carglist.t, carglist.K).title()]];
+        title = [["Users on {} via RID cycling (Known Users: {})".format(carglist.t, carglist.K).title()]];
         header = terminaltables.AsciiTable(title);
         print(header.table);
 
         enum_users_rids(carglist);
 
     if carglist.lookupsids:
-        title = [["Users on {} via Forward RID cycling (RIDs: {} - Base SID: {})".format(carglist.t, carglist.R, carglist.basesid).title()]];
+        title = [["Users on {} via SID Brute Force (SID -> Object) (RIDs: {} - Base SID: {})".format(carglist.t, carglist.R, carglist.basesid).title()]];
         header = terminaltables.AsciiTable(title);
         print(header.table);
 
