@@ -741,18 +741,20 @@ def enum_users_rids(args):
 def enum_users_rids_lookupsids(args):
     try:
         output = subprocess.Popen(
-            ["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c lsaenumsid"],
-            stdout=subprocess.PIPE, shell=False).stdout.read().decode("UTF-8");
+            ["net", "rpc", "getsid", "-W", args.w, "-I", args.t, "-U", "{}%{}".format(args.u, args.p)], stdout=subprocess.PIPE, shell=False).stdout.read().decode("UTF-8");
 
         if not output or output is "":
             cprint("[E] Could not find any matches with the base sid provided\n", "red", attrs=["bold"]);
         else:
 
             full_sid = re.findall("({}-[\d]+-[\d-]+)".format(args.basesid), output, re.I)[0];
-            full_sid = str(full_sid).split('-')[:-1];
-            full_sid = "{}-".format("-".join(full_sid));
+            full_sid = "{}-".format(full_sid);
 
-            cprint("[+] Domain SID/Workgroup SID: {}\n".format(full_sid[:-1]));
+            dlcid = subprocess.Popen(
+                ["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c lookupsids '{}'".format(full_sid[:-1])],
+                stdout=subprocess.PIPE, shell=False).stdout.read().decode("UTF-8");
+
+            cprint("[+] Domain SID/Local SID: {} --> {}\n".format(full_sid[:-1], dlcid.split(" ")[1]));
 
             for ridrange in args.R:
                 minrid = int(str(ridrange).split('-')[0]);
