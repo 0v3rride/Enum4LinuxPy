@@ -506,7 +506,7 @@ def enum_groups(args):
             # GET GROUP NAME, MEMBERS & RID
 
             if not args.nomemberlist:
-                groupdata = re.findall(r"(\[[\w\s\-\_\{\}\.\$]+\])", output, re.I);
+                groupdata = re.findall(r"(\[[\w\s\-\_\{\}\.\$\#]+\])", output, re.I);
 
                 for data in range(0, len(groupdata), 2):
                     print("[+] Information for group '{}' (RID {}):".format(groupdata[data].strip("[]"),
