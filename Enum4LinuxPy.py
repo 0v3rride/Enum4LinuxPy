@@ -648,23 +648,13 @@ def enum_shares(args):
                  "-c dir"], stdout=subprocess.PIPE, shell=False).stdout.read().decode("UTF-8");
 
             if map_response.find("NT_STATUS_ACCESS_DENIED listing") > -1:
-                cprint("""\t[-] Share: {}
-            Mapping: OK
-            Listing: DENIED\n
-                """.format(share), "red", attrs=["bold"]);
+                cprint("""\t[-] Share: {0:<15} \tMapping: OK Listing: DENIED """.format(share), "red", attrs=["bold"]);
             elif map_response.find("tree connect failed: NT_STATUS_ACCESS_DENIED") > -1:
-                cprint("""\t[-] Share: {}
-            Mapping: DENIED
-            Listing: N/A\n
-                """.format(share), "red", attrs=["bold"]);
+                cprint("""\t[-] Share: {0:<15} \tMapping: DENIED Listing: N/A """.format(share), "red", attrs=["bold"]);
             elif re.search("\n\s+\.\.\s+D.*\d{4}\n", map_response, re.I) or re.search("blocks of size|blocks available", map_response, re.I):
-                cprint("""\t[+] Share: {}
-            Mapping: OK
-            Listing: OK\n
-                """.format(share), "green", attrs=["bold"]);
+                cprint("""\t[+] Share: {0:<15} \tMapping: OK Listing: OK """.format(share), "green", attrs=["bold"]);
             else:
-                cprint("\t[E] Can't understand response for {}: {}\n".format(share, map_response), "red",
-                       attrs=["bold"]);
+                cprint("\t[E] Can't understand response for {}: {}".format(share, map_response.rstrip("\n\r")), "red", attrs=["bold"]);
     except subprocess.CalledProcessError as cpe:
         cprint(cpe.output.decode("UTF-8"), "red", attrs=["bold"]);
 
