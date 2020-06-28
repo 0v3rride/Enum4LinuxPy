@@ -117,7 +117,7 @@ def setArgs(uargs):
         uargs.p = "Py";
 
     # check if null password is wanted
-    if uargs.p != None or uargs.p == "":
+    if uargs.p == None or uargs.p == "":
         uargs.p = getpass.getpass("Password:");
 
     return uargs;
