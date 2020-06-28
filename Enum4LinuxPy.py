@@ -117,14 +117,14 @@ def setArgs(uargs):
         uargs.p = "Py";
 
     # check if null password is wanted
-    if uargs.p is None or uargs.p is "":
+    if uargs.p != None or uargs.p == "":
         uargs.p = getpass.getpass("Password:");
 
     return uargs;
 
 
 def checkDependentProgs(proglist, verbose):
-    if sys.platform.lower() is "windows":
+    if sys.platform.lower() == "windows":
         cprint(
             "[E] Enum4LinuxPy is meant to be ran in an *unix type of environment. The reason for this is due to the fact that Enum4LinuxPy utilizes tools like smbclient and rpcclient, which are usually only found in *unix type environments.",
             "red", attrs=["bold"]);
@@ -133,9 +133,9 @@ def checkDependentProgs(proglist, verbose):
     for prog in proglist:
         response = subprocess.run(["which", "{}".format(prog)], stdout=subprocess.PIPE, shell=False);
 
-        if response.returncode is 0 and verbose:
+        if response.returncode == 0 and verbose:
             cprint("[V]: {} is present on this machine.".format(prog), "green", attrs=["bold"]);
-        elif response.returncode is not 0:
+        elif response.returncode != 0:
             cprint("ERROR: {} is not in your path.".format(prog), "red", attrs=["bold"]);
             exit(1);
 
@@ -144,9 +144,9 @@ def checkOptProgs(proglist, verbose):
     for prog in proglist:
         response = subprocess.run(["which", "{}".format(prog)], stdout=subprocess.PIPE, shell=False);
 
-        if response.returncode is 0 and verbose:
+        if response.returncode == 0 and verbose:
             cprint("[V]: {} is present on this machine.".format(prog), "green", attrs=["bold"]);
-        elif response.returncode is not 0:
+        elif response.returncode != 0:
             cprint("WARNING: {} is not in your path.".format(prog), "yellow", attrs=["bold"]);
 
 
@@ -419,7 +419,7 @@ def get_domain_sid(args):
             print("[+] Host is part of a domain (not a workgroup)\n");
             print("[+] {}".format(output));
 
-            if (args.w is None or args.w is "" or args.w is " "):
+            if (args.w == None or args.w == "" or args.w == " "):
                 for line in output.splitlines():
                     if line.find("Domain Name:") > -1:
                         args.w = line.split(": ")[1];
@@ -483,7 +483,7 @@ def enum_groups(args):
                 ["rpcclient", "-W", args.w, "-U", r"{}%{}".format(args.u, args.p), args.t, "-c",
                  "enumalsgroups {}".format(group)], shell=False).decode("UTF-8");
 
-            if (group is "domain"):
+            if (group == "domain"):
                 if args.v:
                     cprint("[V] Getting local groups with enumalsgroups\n", "yellow", attrs=["bold"]);
 
@@ -495,7 +495,7 @@ def enum_groups(args):
                 print("[+] Getting {} groups\n".format(group));
 
             if (output.find("error: NT_STATUS_ACCESS_DENIED") > -1):
-                if (group is "domain"):
+                if (group == "domain"):
                     cprint("[E] Can't get local groups: NT_STATUS_ACCESS_DENIED\n", "red", attrs=["bold"]);
                 else:
                     cprint("[E] Can't get {} groups: NT_STATUS_ACCESS_DENIED\n".format(group), "red", attrs=["bold"]);
@@ -735,7 +735,7 @@ def enum_users_rids_lookupsids(args):
         output = subprocess.Popen(
             ["net", "rpc", "getsid", "-W", args.w, "-I", args.t, "-U", "{}%{}".format(args.u, args.p)], stdout=subprocess.PIPE, shell=False).stdout.read().decode("UTF-8");
 
-        if not output or output is "":
+        if not output or output == "":
             cprint("[E] Could not find any matches with the base sid provided\n", "red", attrs=["bold"]);
         else:
 
