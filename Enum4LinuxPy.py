@@ -96,7 +96,7 @@ def setArgs(uargs):
         uargs.o = True;
         uargs.n = True;
         uargs.i = True;
-    elif not uargs.U and not uargs.S and not uargs.G and not uargs.r and not uargs.p and not uargs.P and not uargs.o and not uargs.n and not uargs.i and not uargs.e:
+    elif True not in [uargs.U, uargs.S, uargs.G, uargs.r, uargs.p, uargs.P, uargs.o, uargs.n, uargs.i, uargs.e]:
         uargs.a = True;
     elif uargs.spray and uargs.brute:
         cprint("[E]: You may only choose to brute force or spray passwords in a single instance", "red",
@@ -117,14 +117,14 @@ def setArgs(uargs):
         uargs.p = "Py";
 
     # check if null password is wanted
-    if uargs.p is None or uargs.p is "":
+    if not uargs.p:
         uargs.p = getpass.getpass("Password:");
 
     return uargs;
 
 
 def checkDependentProgs(proglist, verbose):
-    if sys.platform.lower() is "windows":
+    if sys.platform.lower() == "windows":
         cprint(
             "[E] Enum4LinuxPy is meant to be ran in an *unix type of environment. The reason for this is due to the fact that Enum4LinuxPy utilizes tools like smbclient and rpcclient, which are usually only found in *unix type environments.",
             "red", attrs=["bold"]);
@@ -133,9 +133,9 @@ def checkDependentProgs(proglist, verbose):
     for prog in proglist:
         response = subprocess.run(["which", "{}".format(prog)], stdout=subprocess.PIPE, shell=False);
 
-        if response.returncode is 0 and verbose:
+        if response.returncode == 0 and verbose:
             cprint("[V]: {} is present on this machine.".format(prog), "green", attrs=["bold"]);
-        elif response.returncode is not 0:
+        elif response.returncode != 0:
             cprint("ERROR: {} is not in your path.".format(prog), "red", attrs=["bold"]);
             exit(1);
 
@@ -144,9 +144,9 @@ def checkOptProgs(proglist, verbose):
     for prog in proglist:
         response = subprocess.run(["which", "{}".format(prog)], stdout=subprocess.PIPE, shell=False);
 
-        if response.returncode is 0 and verbose:
+        if response.returncode == 0 and verbose:
             cprint("[V]: {} is present on this machine.".format(prog), "green", attrs=["bold"]);
-        elif response.returncode is not 0:
+        elif response.returncode != 0:
             cprint("WARNING: {} is not in your path.".format(prog), "yellow", attrs=["bold"]);
 
 
@@ -281,7 +281,7 @@ def get_domain_info(args):
             ["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c", "querydominfo"], shell=False).decode(
             "UTF-8");
 
-        if output is not None:
+        if output:
             print(output);
     except subprocess.CalledProcessError as cpe:
         cprint("[E] Unable to get domain information\n", "red", attrs=["bold"]);
@@ -296,7 +296,7 @@ def get_dc_names(args):
         output = subprocess.check_output(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c",
                                           "dsr_getdcname {}".format(args.w)], shell=False).decode("UTF-8");
 
-        if output is not None:
+        if output:
             print(output);
     except subprocess.CalledProcessError as cpe:
         cprint("[E] Unable to get DC name and information\n", "red", attrs=["bold"]);
@@ -308,13 +308,13 @@ def get_dc_names(args):
         output = subprocess.check_output(["rpcclient", "-W", args.w, "-U", "{}%{}".format(args.u, args.p), args.t, "-c",
                                           "getdcname {}".format(str(args.w).split('.')[0])], shell=False).decode("UTF-8");
 
-        if output is not None:
+        if output:
             cprint("[+] UNC Path Found: {}\n".format(output), "green", attrs=["bold"]);
             listout = subprocess.Popen(
                 ["smbclient", "-L", r"{}".format((str(output).strip("\n\r\t\0"))), "-W", args.w, "-U",
                  "{}%{}".format(args.u, args.p)], stdout=subprocess.PIPE, shell=False).stdout.read().decode("UTF-8");
 
-            if listout is not None:
+            if listout:
                 cprint(listout, "green", attrs=["bold"]);
 
     except subprocess.CalledProcessError as cpe:
@@ -419,7 +419,7 @@ def get_domain_sid(args):
             print("[+] Host is part of a domain (not a workgroup)\n");
             print("[+] {}".format(output));
 
-            if (args.w is None or args.w is "" or args.w is " "):
+            if (not args.w or args.w == " "):
                 for line in output.splitlines():
                     if line.find("Domain Name:") > -1:
                         args.w = line.split(": ")[1];
@@ -483,7 +483,7 @@ def enum_groups(args):
                 ["rpcclient", "-W", args.w, "-U", r"{}%{}".format(args.u, args.p), args.t, "-c",
                  "enumalsgroups {}".format(group)], shell=False).decode("UTF-8");
 
-            if (group is "domain"):
+            if (group == "domain"):
                 if args.v:
                     cprint("[V] Getting local groups with enumalsgroups\n", "yellow", attrs=["bold"]);
 
@@ -495,7 +495,7 @@ def enum_groups(args):
                 print("[+] Getting {} groups\n".format(group));
 
             if (output.find("error: NT_STATUS_ACCESS_DENIED") > -1):
-                if (group is "domain"):
+                if (group == "domain"):
                     cprint("[E] Can't get local groups: NT_STATUS_ACCESS_DENIED\n", "red", attrs=["bold"]);
                 else:
                     cprint("[E] Can't get {} groups: NT_STATUS_ACCESS_DENIED\n".format(group), "red", attrs=["bold"]);
@@ -735,7 +735,7 @@ def enum_users_rids_lookupsids(args):
         output = subprocess.Popen(
             ["net", "rpc", "getsid", "-W", args.w, "-I", args.t, "-U", "{}%{}".format(args.u, args.p)], stdout=subprocess.PIPE, shell=False).stdout.read().decode("UTF-8");
 
-        if not output or output is "":
+        if not output:
             cprint("[E] Could not find any matches with the base sid provided\n", "red", attrs=["bold"]);
         else:
 
@@ -856,12 +856,12 @@ def pass_spray(args):
             else:
                 print(output);
 
-            if args.timeout and args.randtimeout is None:
+            if args.timeout and not args.randtimeout:
                 if args.v:
                     cprint("[V] Timeout for {} seconds".format(str(args.timeout)), "yellow", attrs=["bold"]);
 
                 time.sleep(float(args.timeout));
-            elif args.timeout is None and args.randtimeout:
+            elif not args.timeout and args.randtimeout:
                 tout = random.randint(0, args.randtimeout);
 
                 if args.v:
@@ -896,12 +896,12 @@ def brute_pass(args):
             else:
                 print(output);
 
-            if args.timeout and args.randtimeout is None:
+            if args.timeout and not args.randtimeout:
                 if args.v:
                     cprint("[V] Timeout for {} seconds".format(str(args.timeout)), "yellow", attrs=["bold"]);
 
                 time.sleep(float(args.timeout));
-            elif args.timeout is None and args.randtimeout:
+            elif not args.timeout and args.randtimeout:
                 tout = random.randint(0, args.randtimeout);
 
                 if args.v:
